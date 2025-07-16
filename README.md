@@ -1,4 +1,4 @@
-# hub
+# CULT DAO hub
 
 This code is made public in the hope that it will be useful, but without any warranty; without even the implied warranty of merchantability or fitness for a particular purpose. 
 
