@@ -153,6 +153,7 @@ p { margin-bottom: 1rem; opacity: 0.9; }
 }
 .btn:hover:not(:disabled), #currency-selector:hover:not(:disabled) { background: var(--color-text); color: var(--color-bg); border-color: var(--color-text); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
 .btn2 {
     background: var(--color-red); color: var(--color-text); border: 1px solid var(--color-border);
     padding: 10px 20px; font-family: var(--font-main); font-size: 1rem; font-weight: 600;

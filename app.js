@@ -1,5 +1,5 @@
 // =========================================================================
-// app.js - Version 6.2 (Definitive Logic Restoration & Polish)
+// app.js - Version 6.1 (Logic Restoration & Final Polish)
 // =========================================================================
 
 // === Imports ===
@@ -189,6 +189,7 @@ function recalculateAndRenderAllFiatValues() {
     const currency = preferredCurrency.toUpperCase();
     const errorMsg = 'API Error';
 
+
     const elements = [
         { id: 'total-cult-value', labelId: 'total-cult-value-label', label: 'Total Value', value: onChainDataCache.userTotalHoldingsValueUsd },
         { id: 'metric-staked-value', labelId: 'metric-staked-value-label', label: 'Staked Value', value: onChainDataCache.stakedValueUsd },
@@ -208,8 +209,23 @@ function recalculateAndRenderAllFiatValues() {
                 valueEl.textContent = errorMsg;
                 return;
             }
+
             const fiatValue = value / priceData.baseEthInUsd * priceData.ethInFiat;
-            valueEl.textContent = formatCurrency(fiatValue, preferredCurrency);
+
+           
+           
+            if (id === 'metric-cult-price') {
+                // Use high-precision formatting for CULT price
+                valueEl.textContent = new Intl.NumberFormat(undefined, { 
+                    style: 'currency', 
+                    currency: preferredCurrency.toUpperCase(), 
+                    minimumFractionDigits: 10, 
+                    maximumFractionDigits: 10 
+                }).format(fiatValue);
+            } else {
+                // Use standard formatting for all other values
+                valueEl.textContent = formatCurrency(fiatValue, preferredCurrency);
+            }
         }
     });
 }
@@ -291,6 +307,7 @@ function renderStaticMetrics() {
     setMetric('metric-cult-staked', formatBigNumber(onChainDataCache.dcultSupply));
     setMetric('metric-cult-circulating', formatBigNumber(onChainDataCache.circulatingSupplyBN));
     setMetric('metric-treasury-cult', formatNumber(onChainDataCache.treasuryCult, 0));
+
     setMetric('metric-treasury-value-eth', `${(onChainDataCache.treasuryValueUsd / priceData.baseEthInUsd).toFixed(2)} ETH`);
     setMetric('metric-cult-lp', formatNumber(onChainDataCache.cultInLP));
     setMetric('metric-eth-lp', formatNumber(onChainDataCache.ethInLP));
@@ -335,7 +352,6 @@ async function loadAllProposalsInBackground(startingId) { if (startingId <= 0) r
 async function fetchProposalBatch(startId, endId) { const governorContract = new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, provider); const promises = []; const events = await governorContract.queryFilter(governorContract.filters.ProposalCreated(), 0, 'latest'); const descriptionMap = new Map(events.map(e => [e.args.id.toString(), e.args.description])); for (let i = startId; i >= endId && i > 0; i--) { promises.push((async () => { try { const pData = await governorContract.proposals(i); if (pData.proposer === '0x0000000000000000000000000000000000000000') return null; const state = await governorContract.state(i); const actions = await governorContract.getActions(i); const description = descriptionMap.get(i.toString()) || "Description not found."; return { ...pData, id: i, state, actions, description }; } catch (err) { return null; } })()); } const results = await Promise.all(promises); return results.filter(p => p !== null); }
 function displayMoreProposals() { displayedPastProposalsCount += LOAD_MORE_BATCH_SIZE; refreshPastProposalView(); }
 function refreshPastProposalView() { const searchTerm = document.getElementById('search-proposals').value.toLowerCase(); const showExecuted = document.getElementById('filter-executed').checked; const showDefeated = document.getElementById('filter-defeated').checked; const hideCancelled = document.getElementById('filter-hide-cancelled').checked; let filteredProposals = allProposals; if (hideCancelled) filteredProposals = filteredProposals.filter(p => p.state !== PROPOSAL_STATES.CANCELED); if (searchTerm) filteredProposals = filteredProposals.filter(p => p.id.toString().includes(searchTerm) || p.proposer.toLowerCase().includes(searchTerm) || p.description.toLowerCase().includes(searchTerm)); if (showExecuted) filteredProposals = filteredProposals.filter(p => p.state === PROPOSAL_STATES.EXECUTED); else if (showDefeated) filteredProposals = filteredProposals.filter(p => p.state === PROPOSAL_STATES.DEFEATED); const proposalsToDisplay = filteredProposals.slice(0, displayedPastProposalsCount); renderProposals(proposalsToDisplay, document.getElementById('past-proposal-list'), { isActiveList: false, searchTerm }); document.getElementById('load-more-btn').style.display = proposalsToDisplay.length < filteredProposals.length ? 'block' : 'none'; }
-// RESTORED: Logic from reference file for old proposal formatting
 function renderProposals(proposals, targetElement, { isActiveList = false, searchTerm = '' } = {}) { targetElement.innerHTML = ''; if (proposals.length === 0) { targetElement.innerHTML = `<p>No ${isActiveList ? 'active' : 'matching'} proposals found.</p>`; return; } const template = document.getElementById('proposal-template'); const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); const highlight = (text, term) => term ? text.replace(new RegExp(escapeRegExp(term), 'gi'), `<mark>$&</mark>`) : text; proposals.forEach(proposal => { const proposalEl = template.content.cloneNode(true); const stateStr = PROPOSAL_STATE_NAMES[proposal.state]; const totalVotes = proposal.forVotes.add(proposal.againstVotes); let proposalTitle = `Proposal #${proposal.id}`, descriptionHtml = '', technicalDetailsHtml = '', fundingTxHash; try { const data = JSON.parse(proposal.description); if (data.projectName) proposalTitle += `: ${data.projectName}`; const investeeWallet = data.wallet || data.investeeWallet; if (investeeWallet && ethers.utils.isAddress(investeeWallet)) fundingTxHash = fundingTxMap.get(investeeWallet.toLowerCase()); const technicalKeys = new Set(['range', 'rate', 'time', 'checkbox1', 'checkbox2']); const mainDetailsParts = []; const techDetailsParts = []; Object.entries(data).forEach(([key, value]) => { if (value === null || value === undefined || value === '') return; const prettyKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()); let prettyValue = value.toString().replace(/\n/g, '<br>'); if (ethers.utils.isAddress(value.toString()) && value.toString().length === 42) { prettyValue = createAddressLink(value.toString()); } else if (value.toString().startsWith('http')) { prettyValue = `<a href="${value}" target="_blank" rel="noopener noreferrer">${value}</a>`; } prettyValue = highlight(prettyValue, searchTerm); const itemHtml = `<div class="description-item"><strong>${prettyKey}:</strong><br>${prettyValue}</div>`; if (proposal.id <= 162 && technicalKeys.has(key.toLowerCase())) { techDetailsParts.push(itemHtml); } else { mainDetailsParts.push(itemHtml); } }); descriptionHtml = mainDetailsParts.join(''); technicalDetailsHtml = techDetailsParts.join(''); } catch (e) { descriptionHtml = `<div class="description-item">${highlight(proposal.description, searchTerm)}</div>`; } const onChainTechnicalDetails = (proposal.actions && proposal.actions.targets.length > 0) ? proposal.actions.targets.map((target, i) => { const value = ethers.utils.formatEther(proposal.actions.values[i] || '0'); return `<div class="action-item"><p><strong>Target:</strong> ${createAddressLink(target)}</p><p><strong>Value:</strong> ${value} ETH</p><p><strong>Signature:</strong> ${proposal.actions.signatures[i] || 'N/A'}</p><p><strong>Calldata:</strong> ${proposal.actions.calldatas[i]}</p></div>` }).join('') : `<h4>No Actions (Text-only Proposal)</h4>`; const propDiv = proposalEl.querySelector('.proposal'); propDiv.dataset.proposalId = proposal.id; propDiv.querySelector('.proposal-name-title').innerHTML = highlight(proposalTitle, searchTerm); const statusEl = propDiv.querySelector('.proposal-status'); statusEl.textContent = stateStr; statusEl.className = `proposal-status status-${stateStr.toLowerCase()}`; propDiv.querySelector('.prop-for-votes').textContent = formatNumber(parseFloat(ethers.utils.formatUnits(proposal.forVotes, 18)), 0); propDiv.querySelector('.prop-against-votes').textContent = formatNumber(parseFloat(ethers.utils.formatUnits(proposal.againstVotes, 18)), 0); propDiv.querySelector('.prop-total-votes').textContent = formatNumber(parseFloat(ethers.utils.formatUnits(totalVotes, 18)), 0); propDiv.querySelector('.prop-proposer').innerHTML = createAddressLink(proposal.proposer); propDiv.querySelector('.prop-start-block').textContent = proposal.startBlock.toString(); propDiv.querySelector('.prop-end-block').textContent = proposal.endBlock.toString(); propDiv.querySelector('.prop-eta').textContent = proposal.eta.isZero() ? 'Not Queued' : new Date(proposal.eta.toNumber() * 1000).toLocaleString(); const executionTxHash = executionTxMap.get(proposal.id.toString()); const execTxEl = propDiv.querySelector('.prop-execution-tx'); if (executionTxHash) { execTxEl.style.display = 'block'; execTxEl.querySelector('.prop-execution-tx-link').innerHTML = createAddressLink(executionTxHash); } const fundTxEl = propDiv.querySelector('.prop-funding-tx'); if (fundingTxHash) { fundTxEl.style.display = 'block'; fundTxEl.querySelector('.prop-funding-tx-link').innerHTML = createAddressLink(fundingTxHash); } propDiv.querySelector('.prop-description-container').innerHTML = descriptionHtml; propDiv.querySelector('.prop-technical-data').innerHTML = onChainTechnicalDetails + technicalDetailsHtml; if (isActiveList) { propDiv.querySelector('.proposal-timer-container').style.display = 'flex'; propDiv.querySelector('.proposal-timer').id = `timer-${proposal.id}`; propDiv.querySelector('.proposal-actions-container').innerHTML = `<div class="button-group" style="margin-top:20px;border-top:1px dashed var(--color-border);padding-top:20px;"><button class="btn2 vote-for-btn">Approve</button><button class="btn2 vote-against-btn">Reject</button><button class="btn2 vote-for-sig-btn" style="border-style:dashed;">Approve (Sig)</button><button class="btn2 vote-against-sig-btn" style="border-style:dashed;">Reject (Sig)</button><button class="btn2 push-votes-btn" style="border-color: var(--color-blue); display: none;">Push <span class="vote-counter">0</span> Votes</button><button class="btn2 cancel-btn">Cancel</button><button class="btn2 queue-btn">Queue</button><button class="btn2 execute-btn">Execute</button></div>`; } targetElement.appendChild(proposalEl); }); }
 
 // --- Transaction & Signature Functions ---
