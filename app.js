@@ -675,7 +675,7 @@ function refreshPastProposalView() {
     }
 
     const proposalsToDisplay = filteredProposals.slice(0, displayedPastProposalsCount);
-    renderProposals(proposalsToDisplay, pastProposalList, false, searchTerm);
+renderProposals(proposalsToDisplay, pastProposalList, { isActiveList: false, searchTerm: searchTerm });
 
     if (proposalsToDisplay.length < filteredProposals.length) {
         loadMoreBtn.style.display = 'block';
@@ -726,9 +726,16 @@ function renderProposals(proposals, targetElement, { isActiveList = false, searc
                 Object.entries(data).forEach(([key, value]) => {
                     if (value === null || value === undefined || value === '') return;
                     const prettyKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-                    let prettyValue = highlight(value.toString().replace(/\n/g, '<br>'), searchTerm);
-                    if (ethers.utils.isAddress(value.toString()) && value.toString().length === 42) { prettyValue = createAddressLink(value.toString()); } 
-                    else if (value.toString().startsWith('http')) { prettyValue = `<a href="${value}" target="_blank" rel="noopener noreferrer">${value}</a>`; }
+                    
+                    // --- START OF FIX (OLD PROPOSAL) ---
+                    let prettyValue = value.toString().replace(/\n/g, '<br>'); // 1. Get the raw text
+                    if (ethers.utils.isAddress(value.toString()) && value.toString().length === 42) {
+                        prettyValue = createAddressLink(value.toString()); // 2. Overwrite if it's an address
+                    } else if (value.toString().startsWith('http')) {
+                        prettyValue = `<a href="${value}" target="_blank" rel="noopener noreferrer">${value}</a>`; // 2. Overwrite if it's a link
+                    }
+                    prettyValue = highlight(prettyValue, searchTerm); // 3. NOW highlight the final result
+                    // --- END OF FIX (OLD PROPOSAL) ---
                     
                     const itemHtml = `<div class="description-item"><strong>${prettyKey}:</strong><br>${prettyValue}</div>`;
 
@@ -748,9 +755,17 @@ function renderProposals(proposals, targetElement, { isActiveList = false, searc
                 descriptionHtml = Object.entries(data).map(([key, value]) => {
                     if (!value) return '';
                     const prettyKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-                    let prettyValue = highlight(value.toString().replace(/\n/g, '<br>'), searchTerm);
-                    if (ethers.utils.isAddress(value.toString()) && value.toString().length === 42) { prettyValue = createAddressLink(value.toString()); } 
-                    else if (value.toString().startsWith('http')) { prettyValue = `<a href="${value}" target="_blank" rel="noopener noreferrer">${value}</a>`; }
+                    
+                    // --- START OF FIX (NEW PROPOSAL) ---
+                    let prettyValue = value.toString().replace(/\n/g, '<br>'); // 1. Get raw text
+                    if (ethers.utils.isAddress(value.toString()) && value.toString().length === 42) {
+                        prettyValue = createAddressLink(value.toString()); // 2. Overwrite if address
+                    } else if (value.toString().startsWith('http')) {
+                        prettyValue = `<a href="${value}" target="_blank" rel="noopener noreferrer">${value}</a>`; // 2. Overwrite if link
+                    }
+                    prettyValue = highlight(prettyValue, searchTerm); // 3. NOW highlight the final result
+                    // --- END OF FIX (NEW PROPOSAL) ---
+
                     return `<div class="description-item"><strong>${prettyKey}:</strong><br>${prettyValue}</div>`;
                 }).join('');
                 technicalDetailsHtml = (proposal.actions && proposal.actions.targets.length > 0) ? proposal.actions.targets.map((target, i) => { const value = ethers.utils.formatEther(proposal.actions.values[i] || '0'); return `<div class="action-item"><p><strong>Target:</strong> ${createAddressLink(target)}</p><p><strong>Value:</strong> ${value} ETH</p><p><strong>Signature:</strong> ${proposal.actions.signatures[i] || 'N/A'}</p><p><strong>Calldata:</strong> ${proposal.actions.calldatas[i]}</p></div>` }).join('') : `<h4>No Actions (Text-only Proposal)</h4>`;

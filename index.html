@@ -27,6 +27,8 @@
             --font-main: 'hellix', 'Inter', sans-serif;
             --font-mono: 'Roboto Mono', monospace;
         }
+        
+        
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html { height: 100%; }
         body {
@@ -257,7 +259,12 @@
         .action-item, .description-item { border: 1px solid #333; padding: 15px; margin-bottom: 10px; background-color: var(--color-bg-tracked); border-radius: 4px; }
         .description-item { white-space: pre-wrap; }
         .description-item strong { display: block; margin-bottom: 5px; font-family: var(--font-main); color: var(--color-text); opacity: 0.7; }
-        mark { background-color: var(--color-yellow); color: #000; padding: 0 2px; border-radius: 2px; }
+mark {
+    background-color: var(--color-yellow);
+    color: #000;
+    padding: 0 2px;
+    border-radius: 2px;
+} 
         .btn-expand { background: none; border: none; color: var(--color-blue); cursor: pointer; padding: 5px; font-size: 0.9rem; text-decoration: none; margin-left: -5px; font-family: var(--font-main); }
         .btn-expand:hover { text-decoration: underline; }
         .filter-group { display: flex; flex-wrap: wrap; gap: 24px; align-items: center; margin-bottom: 20px; }
