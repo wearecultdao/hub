@@ -312,6 +312,9 @@ details[open] > summary::after {
     gap: 20px;
     margin-bottom: 20px;
 }
+.info-row.justify-start {
+    justify-content: start;
+}
 .info-item { left: 1 1 200px; }
 :root { --theme-name: publish; --btn-bg: var(--color-border); --wallet-dropdown-bg: var(--color-bg); --ui-section-blur: blur(10px); }
 .btn { background: var(--btn-bg); }
