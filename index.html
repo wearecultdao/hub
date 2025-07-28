@@ -32,30 +32,22 @@
     <div class="container">
         <header class="header">
             <h1>CULT DAO</h1>
-            <div class="wallet-widget">
+            <div class="header-actions">
 				<button id="shuffle-theme-btn" class="btn">Shuffle Experience</button>
                 <button id="theme-toggle" class="btn">Switch Mood</button>
-                <select id="currency-selector" class="btn" style="display: none;">
-                  
-                  
-                  
-                    <option value="usd">USD</option>
-                    <option value="eur">EUR</option>
-                    <option value="gbp">GBP</option>
-                    <option value="jpy">JPY</option>
-                    <option value="aud">AUD</option>
-                    <option value="cad">CAD</option>
-                    <option value="chf">CHF</option>
-                    <option value="btc">BTC</option>
-                    <option value="eth">ETH</option>
-                    <option value="xau">Gold</option>
-                    <option value="xag">Silver</option>
-                </select>
-                <button id="connect-wallet-btn" class="btn">Connect Wallet</button>
-                <div id="wallet-dropdown" class="wallet-dropdown">
-                    <button id="copy-address-btn" class="dropdown-item">Copy Address</button>
-                    <a id="etherscan-link" href="#" target="_blank" rel="noopener noreferrer" class="dropdown-item">View on Etherscan</a>
-                    <button id="disconnect-btn" class="dropdown-item">Disconnect</button>
+                <div id="currency-widget" class="currency-widget" style="display: none;">
+                    <button id="currency-selector-btn" class="btn">USD</button>
+                    <div id="currency-dropdown" class="wallet-dropdown">
+                        <!-- Options will be populated by app.js -->
+                    </div>
+                </div>
+                <div class="wallet-widget">
+                    <button id="connect-wallet-btn" class="btn">Connect Wallet</button>
+                    <div id="wallet-dropdown" class="wallet-dropdown">
+                        <button id="copy-address-btn" class="dropdown-item">Copy Address</button>
+                        <a id="etherscan-link" href="#" target="_blank" rel="noopener noreferrer" class="dropdown-item">View on Etherscan</a>
+                        <button id="disconnect-btn" class="dropdown-item">Disconnect</button>
+                    </div>
                 </div>
             </div>
         </header>

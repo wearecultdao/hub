@@ -1,5 +1,5 @@
 // =========================================================================
-// app.js - Version 6.1 (Logic Restoration & Final Polish)
+// app.js - Version 0.0.42.0.69
 // =========================================================================
 
 // === Imports ===
@@ -18,7 +18,10 @@ const INITIAL_PAST_PROPOSAL_COUNT = 10;
 const LOAD_MORE_BATCH_SIZE = 50;
 const PROPOSAL_STATES = { PENDING: 0, ACTIVE: 1, CANCELED: 2, DEFEATED: 3, SUCCEEDED: 4, QUEUED: 5, EXPIRED: 6, EXECUTED: 7 };
 const PROPOSAL_STATE_NAMES = ['Pending', 'Active', 'Canceled', 'Defeated', 'Succeeded', 'Queued', 'Expired', 'Executed'];
-const SUPPORTED_CURRENCIES = ['usd', 'eur', 'gbp', 'jpy', 'aud', 'cad', 'chf', 'btc', 'eth', 'xau', 'xag'];
+const SUPPORTED_CURRENCIES = {
+    usd: 'USD', eur: 'EUR', gbp: 'GBP', jpy: 'JPY', aud: 'AUD',
+    cad: 'CAD', chf: 'CHF', btc: 'BTC', eth: 'ETH', xau: 'Gold', xag: 'Silver'
+};
 
 // --- Global State ---
 let provider, signer, userAddress;
@@ -43,7 +46,9 @@ let isAlertShowing = false;
 const connectBtn = document.getElementById('connect-wallet-btn');
 const dappContent = document.getElementById('dapp-content');
 const walletDropdown = document.getElementById('wallet-dropdown');
-const currencySelector = document.getElementById('currency-selector');
+const currencyWidget = document.getElementById('currency-widget');
+const currencySelectorBtn = document.getElementById('currency-selector-btn');
+const currencyDropdown = document.getElementById('currency-dropdown');
 
 // --- Helper Functions ---
 function createAddressLink(address) { if (!address) return 'N/A'; const isTx = address.length > 42; const shortAddress = `${address.substring(0, 6)}...${address.substring(address.length - 4)}`; const etherscanUrl = `https://etherscan.io/${isTx ? 'tx' : 'address'}/${address}`; const copyIconSvg = `<svg class="copy-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>`; return `<span class="address-link" title="${address}"><a href="${etherscanUrl}" target="_blank" rel="noopener noreferrer">${shortAddress}</a><span onclick="copyTextToClipboard('${address}')">${copyIconSvg}</span></span>`; }
@@ -140,11 +145,14 @@ async function initializeApp() {
     if (!signer) return; 
     const savedCurrency = localStorage.getItem('preferredCurrency');
     const browserCurrency = (Intl.NumberFormat().resolvedOptions().currency || 'usd').toLowerCase();
-    preferredCurrency = savedCurrency || (SUPPORTED_CURRENCIES.includes(browserCurrency) ? browserCurrency : 'usd');
-    currencySelector.value = preferredCurrency;
+    preferredCurrency = savedCurrency || (Object.keys(SUPPORTED_CURRENCIES).includes(browserCurrency) ? browserCurrency : 'usd');
+    
+    currencySelectorBtn.textContent = SUPPORTED_CURRENCIES[preferredCurrency];
+
     averageBlockTime = await calculateAverageBlockTime();
     loadTrackedWallets();
-    await Promise.all([ updateBalances(), updateDelegationStatus(), updateClaimableRewards(), updateDelegationCounter() ]);
+    await updateBalances();
+    await Promise.all([updateDelegationStatus(), updateClaimableRewards(), updateDelegationCounter()]);
     await initialLoad(); 
     await Promise.all([ updateGuardianThreshold(), checkUserRights() ]);
     await refreshAllTrackedWalletData();
@@ -165,10 +173,12 @@ async function updateDelegationCounter() { try { const response = await fetch(`$
 // --- CURRENCY & METRICS ---
 async function fetchUniswapPoolData(provider) { const pair = new ethers.Contract(UNISWAP_PAIR_ADDRESS, UNISWAP_PAIR_ABI, provider); const token0 = await pair.token0(); const [reserve0, reserve1] = await pair.getReserves(); const isCultToken0 = token0.toLowerCase() === CULT_TOKEN_ADDRESS.toLowerCase(); const cultReserve = isCultToken0 ? reserve0 : reserve1; const ethReserve = isCultToken0 ? reserve1 : reserve0; const cultFormatted = parseFloat(ethers.utils.formatUnits(cultReserve, 18)); const ethFormatted = parseFloat(ethers.utils.formatUnits(ethReserve, 18)); const price = ethFormatted > 0 ? ethFormatted / cultFormatted : 0; return { cultInLP: cultFormatted, ethInLP: ethFormatted, price }; }
 
-async function handleCurrencyChange() {
-    preferredCurrency = currencySelector.value;
+async function handleCurrencyChange(newCurrency) {
+    if (!newCurrency || !SUPPORTED_CURRENCIES[newCurrency]) return;
+    preferredCurrency = newCurrency;
     localStorage.setItem('preferredCurrency', preferredCurrency);
-    showCustomAlert(`Fetching prices in ${preferredCurrency.toUpperCase()}...`);
+    currencySelectorBtn.textContent = SUPPORTED_CURRENCIES[newCurrency];
+    showCustomAlert(`Fetching prices in ${SUPPORTED_CURRENCIES[newCurrency]}...`);
     try {
         const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=${preferredCurrency}`);
         priceData.ethInFiat = response.ok ? (await response.json())?.ethereum?.[preferredCurrency] || 0 : 0;
@@ -179,7 +189,7 @@ async function handleCurrencyChange() {
         processAlertQueue();
     } catch (e) {
         console.error("Failed to update currency:", e);
-        showCustomAlert(`Could not fetch price for ${preferredCurrency.toUpperCase()}.`);
+        showCustomAlert(`Could not fetch price for ${SUPPORTED_CURRENCIES[newCurrency]}.`);
     }
 }
 
@@ -212,10 +222,7 @@ function recalculateAndRenderAllFiatValues() {
 
             const fiatValue = value / priceData.baseEthInUsd * priceData.ethInFiat;
 
-           
-           
             if (id === 'metric-cult-price') {
-                // Use high-precision formatting for CULT price
                 valueEl.textContent = new Intl.NumberFormat(undefined, { 
                     style: 'currency', 
                     currency: preferredCurrency.toUpperCase(), 
@@ -223,7 +230,6 @@ function recalculateAndRenderAllFiatValues() {
                     maximumFractionDigits: 10 
                 }).format(fiatValue);
             } else {
-                // Use standard formatting for all other values
                 valueEl.textContent = formatCurrency(fiatValue, preferredCurrency);
             }
         }
@@ -236,11 +242,11 @@ async function fetchOnChainAndPriceData() {
         const poolData = await fetchUniswapPoolData(provider);
         const cult = new ethers.Contract(CULT_TOKEN_ADDRESS, CULT_TOKEN_ABI, provider);
         const dcult = new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, provider);
-
+        const allCurrencies = Object.keys(SUPPORTED_CURRENCIES).join(',');
         const [cultSupply, dcultSupply, burned1, burned2, treasuryCultRaw, ethPriceResUsd] = await Promise.all([
             cult.totalSupply(), dcult.totalSupply(), cult.balanceOf(DEAD_WALLET_1),
             cult.balanceOf(DEAD_WALLET_2), cult.balanceOf(TREASURY_ADDRESS),
-            fetch(`https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=${SUPPORTED_CURRENCIES.join(',')}`)
+            fetch(`https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=${allCurrencies}`)
         ]);
         
         const priceApiResponse = ethPriceResUsd.ok ? await ethPriceResUsd.json() : null;
@@ -253,7 +259,7 @@ async function fetchOnChainAndPriceData() {
         const cultInUsd = priceData.cultInEth * priceData.baseEthInUsd;
         const totalBurnedBN = burned1.add(burned2);
         const circulatingSupplyBN = cultSupply.sub(totalBurnedBN);
-        
+                
         const walletCult = parseFloat(ethers.utils.formatUnits(userCultBalanceRaw || 0, 18));
         const dcultVal = parseFloat(ethers.utils.formatUnits(userDcultBalanceRaw || 0, 18));
         const pendingCult = parseFloat(ethers.utils.formatUnits(userPendingRewardsRaw || 0, 18));
@@ -270,18 +276,17 @@ async function fetchOnChainAndPriceData() {
             stakedValueUsd: parseFloat(ethers.utils.formatUnits(dcultSupply, 18)) * cultInUsd,
             userTotalHoldingsValueUsd: (walletCult + dcultVal + pendingCult) * cultInUsd
         };
-        currencySelector.style.display = 'inline-block';
+        currencyWidget.style.display = 'block';
         return true;
     } catch (err) {
         console.error("Failed to load DAO metrics:", err);
         priceData.baseEthInUsd = 0;
         recalculateAndRenderAllFiatValues();
-        currencySelector.style.display = 'none';
+        currencyWidget.style.display = 'none';
         return false;
     }
 }
 
-// RESTORED: Precise logic from app_correct_executed_proposal_count.js
 function renderStaticMetrics() {
     if (!onChainDataCache) return;
     
@@ -289,7 +294,7 @@ function renderStaticMetrics() {
     const skippedPassedProposals = uniqueProposals.filter(p => p.forVotes?.gt?.(p.againstVotes || 0) && canceledSet.has(p.id.toString()) && (!p.eta || p.eta.isZero?.()));
     const passedProposals = uniqueProposals.filter(p => [4, 5, 7].includes(p.state)).length;
     const executedProposals = passedProposals - skippedPassedProposals.length;
-    
+
     setMetric('metric-total-proposals', uniqueProposals.length);
     setMetric('metric-active-proposals', uniqueProposals.filter(p => p.state === 1).length);
     setMetric('metric-passed-proposals', passedProposals);
@@ -347,7 +352,9 @@ function formatTimeRemaining(seconds) { if (seconds <= 0) return "Voting Ended";
 async function startProposalTimer(proposalId, endBlock) { const timerEl = document.querySelector(`.proposal[data-proposal-id='${proposalId}'] .proposal-timer`); if (!timerEl || !provider) return; try { const currentBlockNumber = await provider.getBlockNumber(); const blocksRemaining = endBlock - currentBlockNumber; if (blocksRemaining <= 0) { timerEl.textContent = "Voting Ended"; return; } let secondsRemaining = blocksRemaining * averageBlockTime; if (activeTimers[proposalId]) clearInterval(activeTimers[proposalId]); const intervalId = setInterval(() => { secondsRemaining -= 1; if (secondsRemaining <= 0) { timerEl.textContent = "Voting Ended"; clearInterval(intervalId); delete activeTimers[proposalId]; } else { timerEl.textContent = formatTimeRemaining(secondsRemaining); } }, 1000); activeTimers[proposalId] = intervalId; } catch (error) { console.error(`Failed to start timer for proposal ${proposalId}:`, error); timerEl.textContent = "Error"; } }
 
 // --- DATA LOADING & RENDERING ---
-async function initialLoad() { const governorContract = new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, provider); const cultContract = new ethers.Contract(CULT_TOKEN_ADDRESS, CULT_TOKEN_ABI, provider); Object.values(activeTimers).forEach(clearInterval); activeTimers = {}; document.getElementById('active-proposal-list').innerHTML = '<p>...</p>'; document.getElementById('past-proposal-list').innerHTML = '<p>...</p>'; document.getElementById('load-more-btn').style.display = 'none'; allProposals = []; displayedPastProposalsCount = INITIAL_PAST_PROPOSAL_COUNT; try { const proposalCount = await governorContract.proposalCount(); const total = proposalCount.toNumber(); const [executedEvents, treasuryDisbursements, canceledEvents] = await Promise.all([ governorContract.queryFilter(governorContract.filters.ProposalExecuted(), 0, 'latest'), cultContract.queryFilter(cultContract.filters.Transfer(TREASURY_ADDRESS, null), 0, 'latest'), governorContract.queryFilter(governorContract.filters.ProposalCanceled(), 0, 'latest') ]); executionTxMap = new Map(executedEvents.filter(e => e.args).map(e => [e.args.id.toString(), e.transactionHash])); fundingTxMap = new Map(); treasuryDisbursements.forEach(event => { if (event.args.to.toLowerCase() !== DEAD_WALLET_1.toLowerCase()) fundingTxMap.set(event.args.to.toLowerCase(), event.transactionHash); }); canceledSet = new Set(canceledEvents.filter(e => e.args).map(e => [e.args.id.toString(), e.transactionHash])); const initialProposals = await fetchProposalBatch(total, Math.max(1, total - INITIAL_PAST_PROPOSAL_COUNT + 1)); const activeProposals = initialProposals.filter(p => p.state === PROPOSAL_STATES.ACTIVE); allProposals = initialProposals.filter(p => p.state !== PROPOSAL_STATES.ACTIVE).sort((a, b) => b.id - a.id); renderProposals(activeProposals, document.getElementById('active-proposal-list'), { isActiveList: true }); activeProposals.forEach(proposal => { startProposalTimer(proposal.id, proposal.endBlock.toNumber()); updateVoteCounterForProposal(proposal.id); }); refreshPastProposalView(); await loadAllProposalsInBackground(total - initialProposals.length); if (await fetchOnChainAndPriceData()) { renderStaticMetrics(); recalculateAndRenderAllFiatValues(); } } catch (e) { console.error("Could not load proposals:", e); } }
+async function initialLoad() { const governorContract = new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, provider); const cultContract = new ethers.Contract(CULT_TOKEN_ADDRESS, CULT_TOKEN_ABI, provider); Object.values(activeTimers).forEach(clearInterval); activeTimers = {}; document.getElementById('active-proposal-list').innerHTML = '<p>...</p>'; document.getElementById('past-proposal-list').innerHTML = '<p>...</p>'; document.getElementById('load-more-btn').style.display = 'none'; allProposals = []; displayedPastProposalsCount = INITIAL_PAST_PROPOSAL_COUNT; try { const proposalCount = await governorContract.proposalCount(); const total = proposalCount.toNumber(); const [executedEvents, treasuryDisbursements, canceledEvents] = await Promise.all([ governorContract.queryFilter(governorContract.filters.ProposalExecuted(), 0, 'latest'), cultContract.queryFilter(cultContract.filters.Transfer(TREASURY_ADDRESS, null), 0, 'latest'), governorContract.queryFilter(governorContract.filters.ProposalCanceled(), 0, 'latest') ]); executionTxMap = new Map(executedEvents.filter(e => e.args).map(e => [e.args.id.toString(), e.transactionHash])); fundingTxMap = new Map(); treasuryDisbursements.forEach(event => { if (event.args.to.toLowerCase() !== DEAD_WALLET_1.toLowerCase()) fundingTxMap.set(event.args.to.toLowerCase(), event.transactionHash); }); 
+    canceledSet = new Set(canceledEvents.filter(e => e.args).map(e => e.args.id.toString()));
+    const initialProposals = await fetchProposalBatch(total, Math.max(1, total - INITIAL_PAST_PROPOSAL_COUNT + 1)); const activeProposals = initialProposals.filter(p => p.state === PROPOSAL_STATES.ACTIVE); allProposals = initialProposals.filter(p => p.state !== PROPOSAL_STATES.ACTIVE).sort((a, b) => b.id - a.id); renderProposals(activeProposals, document.getElementById('active-proposal-list'), { isActiveList: true }); activeProposals.forEach(proposal => { startProposalTimer(proposal.id, proposal.endBlock.toNumber()); updateVoteCounterForProposal(proposal.id); }); refreshPastProposalView(); await loadAllProposalsInBackground(total - initialProposals.length); if (await fetchOnChainAndPriceData()) { renderStaticMetrics(); recalculateAndRenderAllFiatValues(); } } catch (e) { console.error("Could not load proposals:", e); } }
 async function loadAllProposalsInBackground(startingId) { if (startingId <= 0) return; let currentId = startingId; while (currentId > 0) { const batchEndId = Math.max(0, currentId - LOAD_MORE_BATCH_SIZE + 1); const newProposals = await fetchProposalBatch(currentId, batchEndId); const proposalMap = new Map(allProposals.map(p => [p.id, p])); newProposals.forEach(p => proposalMap.set(p.id, p)); allProposals = Array.from(proposalMap.values()).sort((a, b) => b.id - a.id); currentId = batchEndId - 1; } console.log("All historical proposals loaded in background."); refreshPastProposalView(); }
 async function fetchProposalBatch(startId, endId) { const governorContract = new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, provider); const promises = []; const events = await governorContract.queryFilter(governorContract.filters.ProposalCreated(), 0, 'latest'); const descriptionMap = new Map(events.map(e => [e.args.id.toString(), e.args.description])); for (let i = startId; i >= endId && i > 0; i--) { promises.push((async () => { try { const pData = await governorContract.proposals(i); if (pData.proposer === '0x0000000000000000000000000000000000000000') return null; const state = await governorContract.state(i); const actions = await governorContract.getActions(i); const description = descriptionMap.get(i.toString()) || "Description not found."; return { ...pData, id: i, state, actions, description }; } catch (err) { return null; } })()); } const results = await Promise.all(promises); return results.filter(p => p !== null); }
 function displayMoreProposals() { displayedPastProposalsCount += LOAD_MORE_BATCH_SIZE; refreshPastProposalView(); }
@@ -383,6 +390,15 @@ function safeAddEventListener(id, event, handler) {
 
 window.addEventListener('DOMContentLoaded', () => {
     fetchAndDisplayRepoUpdate();
+    
+    // Populate the currency dropdown
+    for (const [code, label] of Object.entries(SUPPORTED_CURRENCIES)) {
+        const item = document.createElement('button');
+        item.className = 'dropdown-item';
+        item.dataset.currency = code;
+        item.textContent = label;
+        currencyDropdown.appendChild(item);
+    }
 
     safeAddEventListener('custom-alert-close', 'click', () => { 
         document.getElementById('custom-alert-overlay').style.display = 'none';
@@ -416,12 +432,38 @@ window.addEventListener('DOMContentLoaded', () => {
         if (reminderBanner) reminderBanner.style.display = 'flex';
     }
 
-    safeAddEventListener('connect-wallet-btn', 'click', () => { if (!userAddress) connectWallet(); else walletDropdown.classList.toggle('show'); });
+    safeAddEventListener('connect-wallet-btn', 'click', () => {
+        if (!userAddress) {
+            connectWallet();
+        } else {
+            currencyDropdown.classList.remove('show');
+            walletDropdown.classList.toggle('show');
+        }
+    });
     safeAddEventListener('copy-address-btn', 'click', copyUserAddressToClipboard);
     safeAddEventListener('disconnect-btn', 'click', disconnectWallet);
-    window.addEventListener('click', (e) => { if (!e.target.closest('.wallet-widget')) walletDropdown.classList.remove('show'); });
     
-    safeAddEventListener('currency-selector', 'change', handleCurrencyChange);
+    safeAddEventListener('currency-selector-btn', 'click', () => {
+        walletDropdown.classList.remove('show');
+        currencyDropdown.classList.toggle('show');
+    });
+
+    currencyDropdown.addEventListener('click', (e) => {
+        const target = e.target.closest('.dropdown-item');
+        if (target && target.dataset.currency) {
+            handleCurrencyChange(target.dataset.currency);
+            currencyDropdown.classList.remove('show');
+        }
+    });
+    
+    window.addEventListener('click', (e) => { 
+        if (!e.target.closest('.wallet-widget')) {
+            walletDropdown.classList.remove('show');
+        }
+        if (!e.target.closest('.currency-widget')) {
+            currencyDropdown.classList.remove('show');
+        }
+    });
 
     safeAddEventListener('stake-btn', 'click', stake);
     safeAddEventListener('unstake-btn', 'click', unstake);
@@ -466,7 +508,7 @@ window.addEventListener('DOMContentLoaded', () => {
         else if (button.classList.contains('view-details-btn')) { 
             const detailsEl = proposalDiv.querySelector('.proposal-details');
             if (detailsEl) {
-                const isHidden = detailsEl.style.display === 'none';
+                const isHidden = detailsEl.style.display === 'none' || detailsEl.style.display === '';
                 detailsEl.style.display = isHidden ? 'block' : 'none';
                 button.innerHTML = isHidden ? 'Hide Details ▲' : 'Show Details ▼';
             }
