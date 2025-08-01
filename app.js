@@ -125,7 +125,7 @@ async function renderTrackedWallets() {
             <div class="info-item"><h3>Value (${preferredCurrency.toUpperCase()})</h3><span class="value">${priceData.ethInFiat > 0 ? formatCurrency(totalValueFiat, preferredCurrency) : 'API Error'}</span></div>
             <div class="info-item"></div><div class="info-item"></div>
             <div class="info-item" style="text-align: right;">
-                <button class="btn2 remove-tracked-wallet-btn" data-wallet-address="${walletData.address}" style="background: none; border: 1px solid var(--color-red); color: var(--color-red); padding: 5px 10px; font-size: 0.8rem;">Remove</button>
+            <button class="btn3 remove-tracked-wallet-btn" data-wallet-address="${walletData.address}">Remove</button>
             </div>`;
         listContainer.appendChild(walletEl);
     }
@@ -158,15 +158,76 @@ async function initializeApp() {
     await refreshAllTrackedWalletData();
 }
 
-async function handleAddWalletInput() { const inputField = document.getElementById('track-wallet-input'); const potentialWallets = inputField.value.split(';').map(w => w.trim()).filter(w => w); if (potentialWallets.length === 0) return showCustomAlert("Please enter one or more wallet addresses or ENS names."); await Promise.all(potentialWallets.map(addTrackedWallet)); inputField.value = ''; }
-async function addTrackedWallet(addressOrEns) { if (!provider) return; let resolvedAddress = addressOrEns; try { if (addressOrEns.endsWith('.eth')) { showCustomAlert(`Resolving ENS: ${addressOrEns}...`); resolvedAddress = await provider.resolveName(addressOrEns); if (!resolvedAddress) throw new Error("Could not resolve ENS name."); } if (!ethers.utils.isAddress(resolvedAddress)) throw new Error("Invalid address or ENS name."); const lowerCaseAddress = resolvedAddress.toLowerCase(); if (trackedWallets.includes(lowerCaseAddress)) { showCustomAlert(`${resolvedAddress.substring(0,6)}... is already tracked.`); return; } showCustomAlert(`Adding ${resolvedAddress.substring(0, 6)}...`); trackedWallets.push(lowerCaseAddress); saveTrackedWallets(); const data = await fetchTrackedWalletData(resolvedAddress); trackedWalletsData.set(lowerCaseAddress, data); await renderTrackedWallets(); document.getElementById('custom-alert-overlay').style.display = 'none'; isAlertShowing = false; processAlertQueue(); } catch(error) { showCustomAlert(`Failed to add wallet "${addressOrEns}": ${error.message}`); } }
+async function handleAddWalletInput() {
+  const inputField = document.getElementById('track-wallet-input');
+  const potentialWallets = inputField.value
+    .split(';')
+    .map(w => w.trim())
+    .filter(w => isValidInput(w)); 
+
+  if (potentialWallets.length === 0)
+    return showCustomAlert("Please enter valid wallet addresses or ENS names only.");
+
+  await Promise.all(potentialWallets.map(addTrackedWallet));
+  inputField.value = '';
+}
+
+function isValidInput(input) {
+  return /^0x[a-fA-F0-9]{40}$/.test(input) || /^[a-zA-Z0-9\-]+\.eth$/.test(input);
+}async function addTrackedWallet(addressOrEns) { if (!provider) return; let resolvedAddress = addressOrEns; try { if (addressOrEns.endsWith('.eth')) { showCustomAlert(`Resolving ENS: ${addressOrEns}...`); resolvedAddress = await provider.resolveName(addressOrEns); if (!resolvedAddress) throw new Error("Could not resolve ENS name."); } if (!ethers.utils.isAddress(resolvedAddress)) throw new Error("Invalid address or ENS name."); const lowerCaseAddress = resolvedAddress.toLowerCase(); if (trackedWallets.includes(lowerCaseAddress)) { showCustomAlert(`${resolvedAddress.substring(0,6)}... is already tracked.`); return; } showCustomAlert(`Adding ${resolvedAddress.substring(0, 6)}...`); trackedWallets.push(lowerCaseAddress); saveTrackedWallets(); const data = await fetchTrackedWalletData(resolvedAddress); trackedWalletsData.set(lowerCaseAddress, data); await renderTrackedWallets(); document.getElementById('custom-alert-overlay').style.display = 'none'; isAlertShowing = false; processAlertQueue(); } catch(error) { showCustomAlert(`Failed to add wallet "${addressOrEns}": ${error.message}`); } }
 function removeTrackedWallet(addressToRemove) { trackedWallets = trackedWallets.filter(addr => addr !== addressToRemove.toLowerCase()); trackedWalletsData.delete(addressToRemove.toLowerCase()); saveTrackedWallets(); renderTrackedWallets(); showCustomAlert(`Removed wallet from tracked list.`); }
 function clearAllTrackedWallets() { if (confirm("Are you sure you want to clear all tracked wallets?")) { trackedWallets = []; trackedWalletsData.clear(); saveTrackedWallets(); renderTrackedWallets(); showCustomAlert("All tracked wallets cleared."); } }
 async function refreshAllTrackedWalletData() { await Promise.all(trackedWallets.map(address => fetchTrackedWalletData(address).then(data => trackedWalletsData.set(address, data)))); await renderTrackedWallets(); }
 async function updateGuardianThreshold() { try { const dCultContract = new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, provider); const stakerData = await dCultContract.highestStakerInPool(0, 0); const thresholdAmount = ethers.utils.formatUnits(stakerData.deposited, 18); setMetric('top50staker', formatNumber(parseFloat(thresholdAmount))); } catch (error) { console.error("Error fetching guardian threshold:", error); setMetric('top50staker', "Error"); } }
 async function updateBalances() { try { const cultContract = new ethers.Contract(CULT_TOKEN_ADDRESS, CULT_TOKEN_ABI, provider); const dCultContract = new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, provider); [userCultBalanceRaw, userDcultBalanceRaw] = await Promise.all([cultContract.balanceOf(userAddress), dCultContract.balanceOf(userAddress)]); userDCultBalance = userDcultBalanceRaw; const cultFormatted = ethers.utils.formatUnits(userCultBalanceRaw, 18); setMetric('cult-balance', formatNumber(parseFloat(cultFormatted))); setMetric('available-cult', `Available: ${cultFormatted}`); const dcultFormatted = ethers.utils.formatUnits(userDcultBalanceRaw, 18); setMetric('dcult-balance', formatNumber(parseFloat(dcultFormatted))); setMetric('available-dcult', `Available: ${dcultFormatted}`); document.getElementById('wallet-address').innerHTML = createAddressLink(userAddress); } catch (error) { console.error("Error updating balances:", error); } }
-async function updateDelegationStatus() { try { const dCultContract = new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, provider); const [delegatee, isGuardian] = await Promise.all([ dCultContract.delegates(userAddress), dCultContract.checkHighestStaker(0, userAddress) ]); setMetric('delegation-status', (delegatee.toLowerCase() === userAddress.toLowerCase()) ? "Self-Delegated (Active)" : "Not Delegated (Inactive)"); const top50Notice = document.getElementById('top50-notice'); if (isGuardian) { top50Notice.textContent = "Guardians (Top 50 Stakers) cannot delegate."; top50Notice.style.display = 'block'; } else { top50Notice.style.display = 'none'; } } catch (error) { console.error("Error fetching delegation status:", error); setMetric('delegation-status', "Error"); } }
-async function checkUserRights() { const proposalSection = document.getElementById('submit-proposal-section'); const notice = document.getElementById('proposal-eligibility-notice'); try { const dCultContract = new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, provider); const isGuardian = await dCultContract.checkHighestStaker(0, userAddress); proposalSection.classList.remove('dimmed-section'); notice.style.display = 'none'; setMetric('rights-label', isGuardian ? "Proposal Rights" : "Voting Rights"); const rightsValueEl = document.getElementById('proposal-rights'); rightsValueEl.classList.remove('the-many'); if (isGuardian) { rightsValueEl.textContent = "Guardian"; rightsValueEl.classList.add('the-many'); } else { if (userDCultBalance.gt(0)) { rightsValueEl.textContent = "The Many"; rightsValueEl.classList.add('the-many'); } else { rightsValueEl.textContent = "None (No dCULT)"; } proposalSection.classList.add('dimmed-section'); notice.innerHTML = `Only Guardians (Top 50 Stakers) can submit proposals.`; notice.style.display = 'block'; } } catch (error) { console.error("Error checking user rights:", error); proposalSection.classList.add('dimmed-section'); notice.textContent = 'Error checking eligibility.'; notice.style.display = 'block'; setMetric('proposal-rights', "Error"); } }
+async function updateDelegationStatus() {
+  try {
+    const dCultContract = new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, provider);
+
+    const [delegatee, isGuardian] = await Promise.all([
+      dCultContract.delegates(userAddress),
+      dCultContract.checkHighestStaker(0, userAddress)
+    ]);
+
+    setMetric('delegation-status', (
+      delegatee.toLowerCase() === userAddress.toLowerCase()
+        ? "Self-Delegated (Active)"
+        : "Not Delegated (Inactive)"
+    ));
+
+    const top50Notice = document.getElementById('top50-notice');
+    if (isGuardian) {
+      top50Notice.textContent = "Guardians (Top 50 Stakers) cannot delegate.";
+      top50Notice.style.display = 'block';
+    } else {
+      top50Notice.style.display = 'none';
+    }
+
+    // Show or hide delegate section
+    if (!isGuardian && userDCultBalance.gt(0)) {
+      document.getElementById('delegate-section').style.display = 'flex';
+    } else {
+      document.getElementById('delegate-section').style.display = 'none';
+    }
+
+    // 🔁 Push Counter Logic
+    try {
+      const sigs = JSON.parse(localStorage.getItem('delegations') || '{}');
+      const pushCount = Object.values(sigs).filter(sig => sig.from === userAddress).length;
+      const counterEl = document.getElementById('delegate-counter');
+      if (counterEl) {
+        counterEl.textContent = pushCount;
+      }
+    } catch (e) {
+      console.error("Failed to update delegate counter:", e);
+    }
+
+  } catch (error) {
+    console.error("Error fetching delegation status:", error);
+    setMetric('delegation-status', "Error");
+  }
+}
+async function checkUserRights() { const proposalSection = document.getElementById('submit-proposal-section'); const notice = document.getElementById('proposal-eligibility-notice'); try { const dCultContract = new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, provider); const isGuardian = await dCultContract.checkHighestStaker(0, userAddress); proposalSection.classList.remove('dimmed-section'); notice.style.display = 'none'; setMetric('rights-label', isGuardian ? "Proposal Rights" : "Voting Rights"); const rightsValueEl = document.getElementById('proposal-rights'); rightsValueEl.classList.remove('the-many'); if (isGuardian) { rightsValueEl.textContent = "Guardian"; rightsValueEl.classList.add('the-many'); } else { if (userDCultBalance.gt(0)) { rightsValueEl.textContent = "The Many"; rightsValueEl.classList.add('the-many'); } else { rightsValueEl.textContent = "None (No dCULT)"; } proposalSection.classList.add('dimmed-section'); notice.textContent = "Only Guardians (Top 50 Stakers) can submit proposals."; notice.style.display = 'block'; } } catch (error) { console.error("Error checking user rights:", error); proposalSection.classList.add('dimmed-section'); notice.textContent = 'Error checking eligibility.'; notice.style.display = 'block'; setMetric('proposal-rights', "Error"); } }
 async function updateClaimableRewards() { try { const claimBtn = document.getElementById('claim-rewards-btn'); const dCultContract = new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, provider); if (userDCultBalance.isZero()) { setMetric('claimable-rewards', "0.00"); claimBtn.style.display = 'none'; return; } const pendingRewardsRaw = await dCultContract.pendingCULT(0, userAddress); userPendingRewardsRaw = pendingRewardsRaw; setMetric('claimable-rewards', formatNumber(parseFloat(ethers.utils.formatUnits(pendingRewardsRaw, 18)))); claimBtn.style.display = pendingRewardsRaw.gt(0) ? 'inline-block' : 'none'; } catch (error) { console.error("Error fetching claimable rewards:", error); setMetric('claimable-rewards', "Error"); } }
 async function updateDelegationCounter() { try { const response = await fetch(`${API_BASE_URL}delegate/counter`); const { data: count = 0 } = await response.json(); setMetric('delegate-counter', count); document.getElementById('push-delegates-btn').style.display = (count > 0) ? 'inline-block' : 'none'; } catch(e) { console.error("Could not fetch delegate counter:", e); setMetric('delegate-counter', "N/A"); document.getElementById('push-delegates-btn').style.display = 'none'; } }
 
@@ -514,4 +575,67 @@ window.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
+});
+
+
+
+
+
+window.addEventListener('DOMContentLoaded', () => {
+  const root = document.documentElement;
+      const themeToggleBtn = document.getElementById('theme-toggle');
+      let isPublishTheme = true;
+      function applyTheme(theme) {
+        if (theme === 'publish') {
+          root.style.setProperty('--background-image', 'radial-gradient(circle, #ff5252, black');
+          root.style.setProperty('--btn-bg', '#333333');
+          root.style.setProperty('--wallet-dropdown-bg', '#050505');
+          root.style.setProperty('--ui-section-blur', 'blur(0px)');
+          root.style.setProperty('--theme-name', 'publish');
+        } else {
+          root.style.setProperty('--background-image', 'radial-gradient(circle, #222222, black)');
+          root.style.setProperty('--btn-bg', '#ff5252');
+          root.style.setProperty('--wallet-dropdown-bg', '#ff5252');
+          root.style.setProperty('--ui-section-blur', 'blur(0px)');
+          root.style.setProperty('--theme-name', 'default');
+        }
+      }
+      themeToggleBtn.addEventListener('click', () => {
+        isPublishTheme = !isPublishTheme;
+        applyTheme(isPublishTheme ? 'publish' : 'default');
+      });
+      applyTheme('publish');
+      const shuffleBtn = document.getElementById('shuffle-theme-btn');
+      function getRandomColor() {
+        const letters = '0123456789ABCDEF';
+        let color = '#';
+        for (let i = 0; i < 6; i++) {
+          color += letters[Math.floor(Math.random() * 14.2069)];
+        }
+        return color;
+      }
+      shuffleBtn.addEventListener('click', () => {
+        const color1 = getRandomColor();
+        const color2 = getRandomColor();
+        const btnColor = getRandomColor();
+        const surfaceColor = '#111111';
+        root.style.setProperty('--background-image', `radial-gradient(circle, ${color1}, ${color2})`);
+        root.style.setProperty('--btn-bg', btnColor);
+        root.style.setProperty('--wallet-dropdown-bg', surfaceColor);
+        root.style.setProperty('--ui-section-blur', 'blur(0px)');
+      });
+});
+document.addEventListener("DOMContentLoaded", () => {
+  const banner = document.getElementById("reminder-banner");
+
+  if (banner) {
+    setTimeout(() => {
+      banner.style.transition = "opacity 3.5s ease";
+      banner.style.opacity = "0";
+
+      setTimeout(() => {
+        banner.style.display = "none";
+      }, 5000);
+    }, 120000); // 120,000 ms = 120 seconds
+  }
 });
