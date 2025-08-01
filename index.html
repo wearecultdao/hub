@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://*.alchemy.com https://api.coingecko.com https://api.cultdao.io https://api.github.com; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline' 'unsafe-eval'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com;"> 
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src 'self' https://*.alchemy.com https://api.coingecko.com https://api.cultdao.io https://api.github.com; object-src 'none';"> 
    <title>CULT DAO | HUB</title>
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js" type="application/javascript"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -33,10 +33,27 @@
         <header class="header">
             <h1>CULT DAO</h1>
             <div class="header-actions">
-				<button id="shuffle-theme-btn" class="btn">Shuffle Experience</button>
-                <button id="theme-toggle" class="btn">Switch Mood</button>
-                <div id="currency-widget" class="currency-widget" style="display: none;">
-                    <button id="currency-selector-btn" class="btn">USD</button>
+			  <button id="shuffle-theme-btn" class="icon-button" title="Shuffle Experience">
+    <!-- SHUFFLE SVG -->
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+      <path d="M237.66,178.34a8,8,0,0,1,0,11.32l-24,24a8,8,0,0,1-11.32-11.32L212.69,192H200.94a72.12,72.12,0,0,1-58.59-30.15l-41.72-58.4A56.1,56.1,0,0,0,55.06,80H32a8,8,0,0,1,0-16H55.06a72.12,72.12,0,0,1,58.59,30.15l41.72,58.4A56.1,56.1,0,0,0,200.94,176h11.75l-10.35-10.34a8,8,0,0,1,11.32-11.32ZM143,107a8,8,0,0,0,11.16-1.86l1.2-1.67A56.1,56.1,0,0,1,200.94,80h11.75L202.34,90.34a8,8,0,0,0,11.32,11.32l24-24a8,8,0,0,0,0-11.32l-24-24a8,8,0,0,0-11.32,11.32L212.69,64H200.94a72.12,72.12,0,0,0-58.59,30.15l-1.2,1.67A8,8,0,0,0,143,107Zm-30,42a8,8,0,0,0-11.16,1.86l-1.2,1.67A56.1,56.1,0,0,1,55.06,176H32a8,8,0,0,0,0,16H55.06a72.12,72.12,0,0,0,58.59-30.15l1.2-1.67A8,8,0,0,0,113,149Z"/>
+    </svg>
+  </button>
+
+  <button id="theme-toggle" class="icon-button" title="Switch Mood">
+    <!-- MOOD SVG -->
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+      <path d="M200.77,53.89A103.27,103.27,0,0,0,128,24h-1.07A104,104,0,0,0,24,128c0,43,26.58,79.06,69.36,94.17A32,32,0,0,0,136,192a16,16,0,0,1,16-16h46.21a31.81,31.81,0,0,0,31.2-24.88,104.43,104.43,0,0,0,2.59-24A103.28,103.28,0,0,0,200.77,53.89ZM213.81,147.7A15.89,15.89,0,0,1,198.21,160H152a32,32,0,0,0-32,32,16,16,0,0,1-21.31,15.07C62.49,194.3,40,164,40,128a88,88,0,0,1,87.09-88h.9a88.35,88.35,0,0,1,88,87.25A88.86,88.86,0,0,1,213.81,147.7ZM140,76a12,12,0,1,1-12-12A12,12,0,0,1,140,76ZM96,100A12,12,0,1,1,84,88,12,12,0,0,1,96,100Zm0,56a12,12,0,1,1-12-12A12,12,0,0,1,96,156Zm88-56a12,12,0,1,1-12-12A12,12,0,0,1,184,100Z"/>
+    </svg>
+  </button>
+
+  <div id="currency-widget" class="currency-widget" style="display: none;">
+    <button id="currency-selector-btn" class="icon-button" title="Switch Currency">
+      <!-- CURRENCY SVG -->
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+        <path d="M184,89.57V84c0-25.08-37.83-44-88-44S8,58.92,8,84v40c0,20.89,26.25,37.49,64,42.46V172c0,25.08,37.83,44,88,44s88-18.92,88-44V132C248,111.3,222.58,94.68,184,89.57ZM232,132c0,13.22-30.79,28-72,28-3.73,0-7.43-.13-11.08-.37C170.49,151.77,184,139,184,124V105.74C213.87,110.19,232,122.27,232,132ZM72,150.25V126.46A183.74,183.74,0,0,0,96,128a183.74,183.74,0,0,0,24-1.54v23.79A163,163,0,0,1,96,152,163,163,0,0,1,72,150.25Zm96-40.32V124c0,8.39-12.41,17.4-32,22.87V123.5C148.91,120.37,159.84,115.71,168,109.93ZM96,56c41.21,0,72,14.78,72,28s-30.79,28-72,28S24,97.22,24,84,54.79,56,96,56ZM24,124V109.93c8.16,5.78,19.09,10.44,32,13.57v23.37C36.41,141.4,24,132.39,24,124Zm64,48v-4.17c2.63.1,5.29.17,8,.17,3.88,0,7.67-.13,11.39-.35A121.92,121.92,0,0,0,120,171.41v23.46C100.41,189.4,88,180.39,88,172Zm48,26.25V174.4a179.48,179.48,0,0,0,24,1.6,183.74,183.74,0,0,0,24-1.54v23.79a165.45,165.45,0,0,1-48,0Zm64-3.38V171.5c12.91-3.13,23.84-7.79,32-13.57V172C232,180.39,219.59,189.4,200,194.87Z"/>
+      </svg>
+    </button>
                     <div id="currency-dropdown" class="wallet-dropdown">
                         <!-- Options will be populated by app.js -->
                     </div>
@@ -55,6 +72,7 @@
             <p>Remember: This is a community-built tool. Use at your own risk. (Latest update: <span id="repo-update-date">...</span>)</p>
             <button id="close-reminder-btn">×</button>
         </div>
+        <canvas id="snap-canvas" width="800" height="60" style="display: none;"></canvas>
         <main id="dapp-content" class="dapp-content">
             <!-- Wallet Section (Always Open) -->
             <section class="ui-section">
@@ -306,49 +324,6 @@
 
     <script type="module" src="contracts.js"></script>
     <script type="module" src="app.js"></script>
-    <script>
-      const root = document.documentElement;
-      const themeToggleBtn = document.getElementById('theme-toggle');
-      let isPublishTheme = true;
-      function applyTheme(theme) {
-        if (theme === 'publish') {
-          root.style.setProperty('--background-image', 'radial-gradient(circle, #ff5252, black');
-          root.style.setProperty('--btn-bg', '#333333');
-          root.style.setProperty('--wallet-dropdown-bg', '#050505');
-          root.style.setProperty('--ui-section-blur', 'blur(0px)');
-          root.style.setProperty('--theme-name', 'publish');
-        } else {
-          root.style.setProperty('--background-image', 'radial-gradient(circle, #222222, black)');
-          root.style.setProperty('--btn-bg', '#ff5252');
-          root.style.setProperty('--wallet-dropdown-bg', '#ff5252');
-          root.style.setProperty('--ui-section-blur', 'blur(0px)');
-          root.style.setProperty('--theme-name', 'default');
-        }
-      }
-      themeToggleBtn.addEventListener('click', () => {
-        isPublishTheme = !isPublishTheme;
-        applyTheme(isPublishTheme ? 'publish' : 'default');
-      });
-      applyTheme('publish');
-      const shuffleBtn = document.getElementById('shuffle-theme-btn');
-      function getRandomColor() {
-        const letters = '0123456789ABCDEF';
-        let color = '#';
-        for (let i = 0; i < 6; i++) {
-          color += letters[Math.floor(Math.random() * 14.2069)];
-        }
-        return color;
-      }
-      shuffleBtn.addEventListener('click', () => {
-        const color1 = getRandomColor();
-        const color2 = getRandomColor();
-        const btnColor = getRandomColor();
-        const surfaceColor = '#111111';
-        root.style.setProperty('--background-image', `radial-gradient(circle, ${color1}, ${color2})`);
-        root.style.setProperty('--btn-bg', btnColor);
-        root.style.setProperty('--wallet-dropdown-bg', surfaceColor);
-        root.style.setProperty('--ui-section-blur', 'blur(0px)');
-      });
-    </script>
+    
 </body>
 </html>
