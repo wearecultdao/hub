@@ -1,8 +1,6 @@
-// --- START OF FIXED app.js ---
-
 import DOMPurify from 'https://cdn.jsdelivr.net/npm/dompurify@3.0.5/+esm';
 // =========================================================================
-// app.js - Version 0.0.42.0.70 (Patched)
+// app.js - Version 0.0.42.0.76 (Final with "Delegated but Not Staked" Notice)
 // =========================================================================
 
 // === Imports ===
@@ -44,6 +42,9 @@ let priceData = { ethInFiat: 0, cultInEth: 0, baseEthInUsd: 0 };
 let onChainDataCache = null;
 let alertQueue = [];
 let isAlertShowing = false;
+let isUserGuardian = false;
+let noticeTimeout;
+
 
 // --- DOM Elements ---
 const connectBtn = document.getElementById('connect-wallet-btn');
@@ -62,8 +63,6 @@ function processAlertQueue() {
     const message = alertQueue.shift();
     const overlay = document.getElementById('custom-alert-overlay');
     const messageEl = document.getElementById('custom-alert-message');
-    // *** FIX APPLIED HERE ***
-    // Sanitize any message before displaying it to prevent XSS from error messages or other sources.
     messageEl.innerHTML = DOMPurify.sanitize(message);
     overlay.style.display = 'flex';
 }
@@ -193,54 +192,116 @@ function clearAllTrackedWallets() { if (confirm("Are you sure you want to clear 
 async function refreshAllTrackedWalletData() { await Promise.all(trackedWallets.map(address => fetchTrackedWalletData(address).then(data => trackedWalletsData.set(address, data)))); await renderTrackedWallets(); }
 async function updateGuardianThreshold() { try { const dCultContract = new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, provider); const stakerData = await dCultContract.highestStakerInPool(0, 0); const thresholdAmount = ethers.utils.formatUnits(stakerData.deposited, 18); setMetric('top50staker', formatNumber(parseFloat(thresholdAmount))); } catch (error) { console.error("Error fetching guardian threshold:", error); setMetric('top50staker', "Error"); } }
 async function updateBalances() { try { const cultContract = new ethers.Contract(CULT_TOKEN_ADDRESS, CULT_TOKEN_ABI, provider); const dCultContract = new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, provider); [userCultBalanceRaw, userDcultBalanceRaw] = await Promise.all([cultContract.balanceOf(userAddress), dCultContract.balanceOf(userAddress)]); userDCultBalance = userDcultBalanceRaw; const cultFormatted = ethers.utils.formatUnits(userCultBalanceRaw, 18); setMetric('cult-balance', formatNumber(parseFloat(cultFormatted))); setMetric('available-cult', `Available: ${cultFormatted}`); const dcultFormatted = ethers.utils.formatUnits(userDcultBalanceRaw, 18); setMetric('dcult-balance', formatNumber(parseFloat(dcultFormatted))); setMetric('available-dcult', `Available: ${dcultFormatted}`); document.getElementById('wallet-address').innerHTML = createAddressLink(userAddress); } catch (error) { console.error("Error updating balances:", error); } }
-async function updateDelegationStatus() {
-  try {
-    const dCultContract = new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, provider);
 
-    const [delegatee, isGuardian] = await Promise.all([
-      dCultContract.delegates(userAddress),
-      dCultContract.checkHighestStaker(0, userAddress)
-    ]);
+function showAndFadeNotice(message) {
+    const noticeContainer = document.getElementById('top50-notice-container');
+    const noticeText = document.getElementById('top50-notice');
+    if (!noticeContainer || !noticeText) return;
 
-    setMetric('delegation-status', (
-      delegatee.toLowerCase() === userAddress.toLowerCase()
-        ? "Self-Delegated (Active)"
-        : "Not Delegated (Inactive)"
-    ));
+    if (noticeTimeout) clearTimeout(noticeTimeout);
 
-    const top50Notice = document.getElementById('top50-notice');
-    if (isGuardian) {
-      top50Notice.textContent = "Guardians (Top 50 Stakers) cannot delegate.";
-      top50Notice.style.display = 'block';
-    } else {
-      top50Notice.style.display = 'none';
-    }
+    noticeText.innerHTML = DOMPurify.sanitize(message);
+    noticeContainer.style.opacity = '1';
+    noticeContainer.style.display = 'flex';
 
-    // Show or hide delegate section
-    if (!isGuardian && userDCultBalance.gt(0)) {
-      document.getElementById('delegate-section').style.display = 'flex';
-    } else {
-      document.getElementById('delegate-section').style.display = 'none';
-    }
-
-    // 🔁 Push Counter Logic
-    try {
-      const sigs = JSON.parse(localStorage.getItem('delegations') || '{}');
-      const pushCount = Object.values(sigs).filter(sig => sig.from === userAddress).length;
-      const counterEl = document.getElementById('delegate-counter');
-      if (counterEl) {
-        counterEl.textContent = pushCount;
-      }
-    } catch (e) {
-      console.error("Failed to update delegate counter:", e);
-    }
-
-  } catch (error) {
-    console.error("Error fetching delegation status:", error);
-    setMetric('delegation-status', "Error");
-  }
+    noticeTimeout = setTimeout(() => {
+        noticeContainer.style.transition = 'opacity 3.5s ease-out';
+        noticeContainer.style.opacity = '0';
+        setTimeout(() => {
+            if (noticeContainer.style.opacity === '0') {
+                 noticeContainer.style.display = 'none';
+                 noticeContainer.style.transition = ''; 
+            }
+        }, 5000); 
+    }, 180000); // 
 }
-async function checkUserRights() { const proposalSection = document.getElementById('submit-proposal-section'); const notice = document.getElementById('proposal-eligibility-notice'); try { const dCultContract = new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, provider); const isGuardian = await dCultContract.checkHighestStaker(0, userAddress); proposalSection.classList.remove('dimmed-section'); notice.style.display = 'none'; setMetric('rights-label', isGuardian ? "Proposal Rights" : "Voting Rights"); const rightsValueEl = document.getElementById('proposal-rights'); rightsValueEl.classList.remove('the-many'); if (isGuardian) { rightsValueEl.textContent = "Guardian"; rightsValueEl.classList.add('the-many'); } else { if (userDCultBalance.gt(0)) { rightsValueEl.textContent = "The Many"; rightsValueEl.classList.add('the-many'); } else { rightsValueEl.textContent = "None (No dCULT)"; } proposalSection.classList.add('dimmed-section'); notice.textContent = "Only Guardians (Top 50 Stakers) can submit proposals."; notice.style.display = 'block'; } } catch (error) { console.error("Error checking user rights:", error); proposalSection.classList.add('dimmed-section'); notice.textContent = 'Error checking eligibility.'; notice.style.display = 'block'; setMetric('proposal-rights', "Error"); } }
+
+async function updateDelegationStatus() {
+    try {
+        const dCultContract = new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, provider);
+        const [delegatee, isGuardian] = await Promise.all([
+            dCultContract.delegates(userAddress),
+            dCultContract.checkHighestStaker(0, userAddress)
+        ]);
+        
+        isUserGuardian = isGuardian; 
+
+        const isSelfDelegated = delegatee.toLowerCase() === userAddress.toLowerCase();
+        setMetric('delegation-status', isSelfDelegated ? "Self-Delegated (Active)" : "Not Delegated (Inactive)");
+
+        const delegateBtn = document.getElementById('delegate-btn');
+        const signDelegationBtn = document.getElementById('sign-delegation-btn');
+        const delegateSection = document.getElementById('delegate-section');
+        const noticeContainer = document.getElementById('top50-notice-container');
+        
+        delegateSection.style.display = 'flex';
+        noticeContainer.style.display = 'none'; 
+
+        // --- TESTING LINES ---
+        // Uncomment one of these lines to force a specific notice to appear for testing.
+        // showAndFadeNotice("Please delegate your dCULT to activate your voting rights."); // Staked, not delegated
+        // showAndFadeNotice("Your Delegation Status is active but you do not stake any Cult. Stake some to participate in DAO votings."); // Delegated, not staked
+
+        if (isUserGuardian) {
+            showAndFadeNotice("Guardians (Top 50 Stakers) cannot delegate.");
+            delegateBtn.style.display = 'none';
+            signDelegationBtn.style.display = 'none';
+        } else {
+            // --- START OF CHANGES: New condition for Delegated but Not Staked ---
+            if (userDCultBalance.gt(0) && !isSelfDelegated) {
+                showAndFadeNotice("To participate in DAO votings you still need to delegate your staked Cult.");
+            } else if (isSelfDelegated && userDCultBalance.isZero()) {
+                showAndFadeNotice("Your Delegation Status is active but you do not stake any Cult. Stake some to participate in DAO votings.");
+            }
+            // --- END OF CHANGES ---
+            
+            if (userDCultBalance.gt(0)) {
+                delegateBtn.style.display = 'inline-block';
+                signDelegationBtn.style.display = 'inline-block';
+            } else {
+                delegateBtn.style.display = 'none';
+                signDelegationBtn.style.display = 'none';
+            }
+        }
+    } catch (error) {
+        console.error("Error fetching delegation status:", error);
+        setMetric('delegation-status', "Error");
+    }
+}
+async function checkUserRights() {
+    const proposalSection = document.getElementById('submit-proposal-section');
+    const notice = document.getElementById('proposal-eligibility-notice');
+    try {
+        isUserGuardian = await new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, provider).checkHighestStaker(0, userAddress);
+        
+        proposalSection.classList.remove('dimmed-section');
+        notice.style.display = 'none';
+        setMetric('rights-label', isUserGuardian ? "Proposal Rights" : "Voting Rights");
+        const rightsValueEl = document.getElementById('proposal-rights');
+        rightsValueEl.classList.remove('the-many');
+
+        if (isUserGuardian) {
+            rightsValueEl.textContent = "Guardian";
+            rightsValueEl.classList.add('the-many');
+        } else {
+            if (userDCultBalance.gt(0)) {
+                rightsValueEl.textContent = "The Many";
+                rightsValueEl.classList.add('the-many');
+            } else {
+                rightsValueEl.textContent = "None (No dCULT)";
+            }
+            proposalSection.classList.add('dimmed-section');
+            notice.textContent = "Only Guardians (Top 50 Stakers) can submit proposals.";
+            notice.style.display = 'block';
+        }
+    } catch (error) {
+        console.error("Error checking user rights:", error);
+        proposalSection.classList.add('dimmed-section');
+        notice.textContent = 'Error checking eligibility.';
+        notice.style.display = 'block';
+        setMetric('proposal-rights', "Error");
+    }
+}
 async function updateClaimableRewards() { try { const claimBtn = document.getElementById('claim-rewards-btn'); const dCultContract = new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, provider); if (userDCultBalance.isZero()) { setMetric('claimable-rewards', "0.00"); claimBtn.style.display = 'none'; return; } const pendingRewardsRaw = await dCultContract.pendingCULT(0, userAddress); userPendingRewardsRaw = pendingRewardsRaw; setMetric('claimable-rewards', formatNumber(parseFloat(ethers.utils.formatUnits(pendingRewardsRaw, 18)))); claimBtn.style.display = pendingRewardsRaw.gt(0) ? 'inline-block' : 'none'; } catch (error) { console.error("Error fetching claimable rewards:", error); setMetric('claimable-rewards', "Error"); } }
 async function updateDelegationCounter() { try { const response = await fetch(`${API_BASE_URL}delegate/counter`); const { data: count = 0 } = await response.json(); setMetric('delegate-counter', count); document.getElementById('push-delegates-btn').style.display = (count > 0) ? 'inline-block' : 'none'; } catch(e) { console.error("Could not fetch delegate counter:", e); setMetric('delegate-counter', "N/A"); document.getElementById('push-delegates-btn').style.display = 'none'; } }
 
@@ -368,9 +429,16 @@ function renderStaticMetrics() {
     const skippedPassedProposals = uniqueProposals.filter(p => p.forVotes?.gt?.(p.againstVotes || 0) && canceledSet.has(p.id.toString()) && (!p.eta || p.eta.isZero?.()));
     const passedProposals = uniqueProposals.filter(p => [4, 5, 7].includes(p.state)).length;
     const executedProposals = passedProposals - skippedPassedProposals.length;
+    
+    const activeProposalsCount = uniqueProposals.filter(p => p.state === 1).length;
+    setMetric('metric-active-proposals', activeProposalsCount);
+
+    const activeProposalsDetails = document.getElementById('details-active-proposals');
+    if (activeProposalsDetails) {
+        activeProposalsDetails.open = activeProposalsCount > 0;
+    }
 
     setMetric('metric-total-proposals', uniqueProposals.length);
-    setMetric('metric-active-proposals', uniqueProposals.filter(p => p.state === 1).length);
     setMetric('metric-passed-proposals', passedProposals);
     setMetric('metric-executed-proposals', executedProposals);
     setMetric('metric-defeated-proposals', uniqueProposals.filter(p => p.state === 3).length);
@@ -433,25 +501,176 @@ async function loadAllProposalsInBackground(startingId) { if (startingId <= 0) r
 async function fetchProposalBatch(startId, endId) { const governorContract = new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, provider); const promises = []; const events = await governorContract.queryFilter(governorContract.filters.ProposalCreated(), 0, 'latest'); const descriptionMap = new Map(events.map(e => [e.args.id.toString(), e.args.description])); for (let i = startId; i >= endId && i > 0; i--) { promises.push((async () => { try { const pData = await governorContract.proposals(i); if (pData.proposer === '0x0000000000000000000000000000000000000000') return null; const state = await governorContract.state(i); const actions = await governorContract.getActions(i); const description = descriptionMap.get(i.toString()) || "Description not found."; return { ...pData, id: i, state, actions, description }; } catch (err) { return null; } })()); } const results = await Promise.all(promises); return results.filter(p => p !== null); }
 function displayMoreProposals() { displayedPastProposalsCount += LOAD_MORE_BATCH_SIZE; refreshPastProposalView(); }
 function refreshPastProposalView() { const searchTerm = document.getElementById('search-proposals').value.toLowerCase(); const showExecuted = document.getElementById('filter-executed').checked; const showDefeated = document.getElementById('filter-defeated').checked; const hideCancelled = document.getElementById('filter-hide-cancelled').checked; let filteredProposals = allProposals; if (hideCancelled) filteredProposals = filteredProposals.filter(p => p.state !== PROPOSAL_STATES.CANCELED); if (searchTerm) filteredProposals = filteredProposals.filter(p => p.id.toString().includes(searchTerm) || p.proposer.toLowerCase().includes(searchTerm) || p.description.toLowerCase().includes(searchTerm)); if (showExecuted) filteredProposals = filteredProposals.filter(p => p.state === PROPOSAL_STATES.EXECUTED); else if (showDefeated) filteredProposals = filteredProposals.filter(p => p.state === PROPOSAL_STATES.DEFEATED); const proposalsToDisplay = filteredProposals.slice(0, displayedPastProposalsCount); renderProposals(proposalsToDisplay, document.getElementById('past-proposal-list'), { isActiveList: false, searchTerm }); document.getElementById('load-more-btn').style.display = proposalsToDisplay.length < filteredProposals.length ? 'block' : 'none'; }
-function renderProposals(proposals, targetElement, { isActiveList = false, searchTerm = '' } = {}) { targetElement.innerHTML = ''; if (proposals.length === 0) { targetElement.innerHTML = `<p>No ${isActiveList ? 'active' : 'matching'} proposals found.</p>`; return; } const template = document.getElementById('proposal-template'); const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); const highlight = (text, term) => term ? text.replace(new RegExp(escapeRegExp(term), 'gi'), `<mark>$&</mark>`) : text; proposals.forEach(proposal => { const proposalEl = template.content.cloneNode(true); const stateStr = PROPOSAL_STATE_NAMES[proposal.state]; const totalVotes = proposal.forVotes.add(proposal.againstVotes); let proposalTitle = `Proposal #${proposal.id}`, descriptionHtml = '', technicalDetailsHtml = '', fundingTxHash; try { const data = JSON.parse(proposal.description); if (data.projectName) proposalTitle += `: ${data.projectName}`; const investeeWallet = data.wallet || data.investeeWallet; if (investeeWallet && ethers.utils.isAddress(investeeWallet)) fundingTxHash = fundingTxMap.get(investeeWallet.toLowerCase()); const technicalKeys = new Set(['range', 'rate', 'time', 'checkbox1', 'checkbox2']); const mainDetailsParts = []; const techDetailsParts = []; Object.entries(data).forEach(([key, value]) => { if (value === null || value === undefined || value === '') return; const prettyKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()); let prettyValue = value.toString().replace(/\n/g, '<br>'); if (ethers.utils.isAddress(value.toString()) && value.toString().length === 42) { prettyValue = createAddressLink(value.toString()); } else if (value.toString().startsWith('http')) { prettyValue = `<a href="${value}" target="_blank" rel="noopener noreferrer">${value}</a>`; } prettyValue = highlight(prettyValue, searchTerm); const itemHtml = `<div class="description-item"><strong>${prettyKey}:</strong><br>${prettyValue}</div>`; if (proposal.id <= 162 && technicalKeys.has(key.toLowerCase())) { techDetailsParts.push(itemHtml); } else { mainDetailsParts.push(itemHtml); } }); descriptionHtml = mainDetailsParts.join(''); technicalDetailsHtml = techDetailsParts.join(''); } catch (e) { descriptionHtml = `<div class="description-item">${highlight(proposal.description, searchTerm)}</div>`; } const onChainTechnicalDetails = (proposal.actions && proposal.actions.targets.length > 0) ? proposal.actions.targets.map((target, i) => { const value = ethers.utils.formatEther(proposal.actions.values[i] || '0'); return `<div class="action-item"><p><strong>Target:</strong> ${createAddressLink(target)}</p><p><strong>Value:</strong> ${value} ETH</p><p><strong>Signature:</strong> ${proposal.actions.signatures[i] || 'N/A'}</p><p><strong>Calldata:</strong> ${proposal.actions.calldatas[i]}</p></div>` }).join('') : `<h4>No Actions (Text-only Proposal)</h4>`; const propDiv = proposalEl.querySelector('.proposal'); propDiv.dataset.proposalId = proposal.id; propDiv.querySelector('.proposal-name-title').innerHTML = highlight(proposalTitle, searchTerm); const statusEl = propDiv.querySelector('.proposal-status'); statusEl.textContent = stateStr; statusEl.className = `proposal-status status-${stateStr.toLowerCase()}`; propDiv.querySelector('.prop-for-votes').textContent = formatNumber(parseFloat(ethers.utils.formatUnits(proposal.forVotes, 18)), 0); propDiv.querySelector('.prop-against-votes').textContent = formatNumber(parseFloat(ethers.utils.formatUnits(proposal.againstVotes, 18)), 0); propDiv.querySelector('.prop-total-votes').textContent = formatNumber(parseFloat(ethers.utils.formatUnits(totalVotes, 18)), 0); propDiv.querySelector('.prop-proposer').innerHTML = createAddressLink(proposal.proposer); propDiv.querySelector('.prop-start-block').textContent = proposal.startBlock.toString(); propDiv.querySelector('.prop-end-block').textContent = proposal.endBlock.toString(); propDiv.querySelector('.prop-eta').textContent = proposal.eta.isZero() ? 'Not Queued' : new Date(proposal.eta.toNumber() * 1000).toLocaleString(); const executionTxHash = executionTxMap.get(proposal.id.toString()); const execTxEl = propDiv.querySelector('.prop-execution-tx'); if (executionTxHash) { execTxEl.style.display = 'block'; execTxEl.querySelector('.prop-execution-tx-link').innerHTML = createAddressLink(executionTxHash); } const fundTxEl = propDiv.querySelector('.prop-funding-tx'); if (fundingTxHash) { fundTxEl.style.display = 'block'; fundTxEl.querySelector('.prop-funding-tx-link').innerHTML = createAddressLink(fundingTxHash); }
-    
-    // *** FIX APPLIED HERE ***
-    // Sanitize all proposal data before rendering it as HTML to prevent stored XSS.
-    propDiv.querySelector('.prop-description-container').innerHTML = DOMPurify.sanitize(descriptionHtml);
-    propDiv.querySelector('.prop-technical-data').innerHTML = DOMPurify.sanitize(onChainTechnicalDetails + technicalDetailsHtml);
 
-    if (isActiveList) { propDiv.querySelector('.proposal-timer-container').style.display = 'flex'; propDiv.querySelector('.proposal-timer').id = `timer-${proposal.id}`; propDiv.querySelector('.proposal-actions-container').innerHTML = `<div class="button-group" style="margin-top:20px;border-top:1px dashed var(--color-border);padding-top:20px;"><button class="btn2 vote-for-btn">Approve</button><button class="btn2 vote-against-btn">Reject</button><button class="btn2 vote-for-sig-btn" style="border-style:dashed;">Approve (Sig)</button><button class="btn2 vote-against-sig-btn" style="border-style:dashed;">Reject (Sig)</button><button class="btn2 push-votes-btn" style="border-color: var(--color-blue); display: none;">Push <span class="vote-counter">0</span> Votes</button><button class="btn2 cancel-btn">Cancel</button><button class="btn2 queue-btn">Queue</button><button class="btn2 execute-btn">Execute</button></div>`; } targetElement.appendChild(proposalEl); }); }
+function getProposalActionsHtml(proposal) {
+    let buttonsHtml = '';
+    const canVote = userDCultBalance.gt(0);
+
+    switch (proposal.state) {
+        case PROPOSAL_STATES.ACTIVE:
+            if (canVote) {
+                 buttonsHtml += `
+                    <button class="btn2 vote-for-btn">Approve</button>
+                    <button class="btn2 vote-against-btn">Reject</button>
+                    <button class="btn2 vote-for-sig-btn" style="border-style:dashed;">Approve (Sig)</button>
+                    <button class="btn2 vote-against-sig-btn" style="border-style:dashed;">Reject (Sig)</button>
+                `;
+            }
+            buttonsHtml += `<button class="btn2 push-votes-btn" style="border-color: var(--color-blue); display: none;">Push <span class="vote-counter">0</span> Votes</button>`;
+            if (isUserGuardian && proposal.proposer.toLowerCase() === userAddress.toLowerCase()) {
+                buttonsHtml += `<button class="btn2 cancel-btn">Cancel</button>`;
+            }
+            break;
+
+        case PROPOSAL_STATES.SUCCEEDED:
+            buttonsHtml += `<button class="btn2 queue-btn">Queue</button>`;
+            break;
+
+        case PROPOSAL_STATES.QUEUED:
+            buttonsHtml += `<button class="btn2 execute-btn">Execute</button>`;
+            break;
+    }
+
+    return `<div class="button-group" style="margin-top:20px;border-top:1px dashed var(--color-border);padding-top:20px;">${buttonsHtml}</div>`;
+}
+
+function renderProposals(proposals, targetElement, { isActiveList = false, searchTerm = '' } = {}) {
+    targetElement.innerHTML = '';
+    if (proposals.length === 0) {
+        targetElement.innerHTML = `<p>No ${isActiveList ? 'active' : 'matching'} proposals found.</p>`;
+        return;
+    }
+    const template = document.getElementById('proposal-template');
+    const escapeRegExp = (string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const highlight = (text, term) => term ? text.replace(new RegExp(escapeRegExp(term), 'gi'), `<mark>$&</mark>`) : text;
+    proposals.forEach(proposal => {
+        const proposalEl = template.content.cloneNode(true);
+        const stateStr = PROPOSAL_STATE_NAMES[proposal.state];
+        const totalVotes = proposal.forVotes.add(proposal.againstVotes);
+        let proposalTitle = `Proposal #${proposal.id}`, descriptionHtml = '', technicalDetailsHtml = '', fundingTxHash;
+        try {
+            const data = JSON.parse(proposal.description);
+            if (data.projectName) proposalTitle += `: ${data.projectName}`;
+            const investeeWallet = data.wallet || data.investeeWallet;
+            if (investeeWallet && ethers.utils.isAddress(investeeWallet)) {
+                fundingTxHash = fundingTxMap.get(investeeWallet.toLowerCase());
+            }
+            const technicalKeys = new Set(['range', 'rate', 'time', 'checkbox1', 'checkbox2']);
+            const mainDetailsParts = [];
+            const techDetailsParts = [];
+            Object.entries(data).forEach(([key, value]) => {
+                if (value === null || value === undefined || value === '') return;
+                const prettyKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                let prettyValue = value.toString().replace(/\n/g, '<br>');
+                if (ethers.utils.isAddress(value.toString()) && value.toString().length === 42) {
+                    prettyValue = createAddressLink(value.toString());
+                } else if (value.toString().startsWith('http')) {
+                    prettyValue = `<a href="${value}" target="_blank" rel="noopener noreferrer">${value}</a>`;
+                }
+                prettyValue = highlight(prettyValue, searchTerm);
+                const itemHtml = `<div class="description-item"><strong>${prettyKey}:</strong><br>${prettyValue}</div>`;
+                if (proposal.id <= 162 && technicalKeys.has(key.toLowerCase())) {
+                    techDetailsParts.push(itemHtml);
+                } else {
+                    mainDetailsParts.push(itemHtml);
+                }
+            });
+            descriptionHtml = mainDetailsParts.join('');
+            technicalDetailsHtml = techDetailsParts.join('');
+        } catch (e) {
+            descriptionHtml = `<div class="description-item">${highlight(proposal.description, searchTerm)}</div>`;
+        }
+        const onChainTechnicalDetails = (proposal.actions && proposal.actions.targets.length > 0) ? proposal.actions.targets.map((target, i) => { const value = ethers.utils.formatEther(proposal.actions.values[i] || '0'); return `<div class="action-item"><p><strong>Target:</strong> ${createAddressLink(target)}</p><p><strong>Value:</strong> ${value} ETH</p><p><strong>Signature:</strong> ${proposal.actions.signatures[i] || 'N/A'}</p><p><strong>Calldata:</strong> ${proposal.actions.calldatas[i]}</p></div>` }).join('') : `<h4>No Actions (Text-only Proposal)</h4>`;
+        const propDiv = proposalEl.querySelector('.proposal');
+        propDiv.dataset.proposalId = proposal.id;
+        propDiv.querySelector('.proposal-name-title').innerHTML = highlight(proposalTitle, searchTerm);
+        const statusEl = propDiv.querySelector('.proposal-status');
+        statusEl.textContent = stateStr;
+        statusEl.className = `proposal-status status-${stateStr.toLowerCase()}`;
+        propDiv.querySelector('.prop-for-votes').textContent = formatNumber(parseFloat(ethers.utils.formatUnits(proposal.forVotes, 18)), 0);
+        propDiv.querySelector('.prop-against-votes').textContent = formatNumber(parseFloat(ethers.utils.formatUnits(proposal.againstVotes, 18)), 0);
+        propDiv.querySelector('.prop-total-votes').textContent = formatNumber(parseFloat(ethers.utils.formatUnits(totalVotes, 18)), 0);
+        propDiv.querySelector('.prop-proposer').innerHTML = createAddressLink(proposal.proposer);
+        propDiv.querySelector('.prop-start-block').textContent = proposal.startBlock.toString();
+        propDiv.querySelector('.prop-end-block').textContent = proposal.endBlock.toString();
+        propDiv.querySelector('.prop-eta').textContent = proposal.eta.isZero() ? 'Not Queued' : new Date(proposal.eta.toNumber() * 1000).toLocaleString();
+        const executionTxHash = executionTxMap.get(proposal.id.toString());
+        const execTxEl = propDiv.querySelector('.prop-execution-tx');
+        if (executionTxHash) {
+            execTxEl.style.display = 'block';
+            execTxEl.querySelector('.prop-execution-tx-link').innerHTML = createAddressLink(executionTxHash);
+        }
+        const fundTxEl = propDiv.querySelector('.prop-funding-tx');
+        if (fundingTxHash) {
+            fundTxEl.style.display = 'block';
+            fundTxEl.querySelector('.prop-funding-tx-link').innerHTML = createAddressLink(fundingTxHash);
+        }
+
+        propDiv.querySelector('.prop-description-container').innerHTML = DOMPurify.sanitize(descriptionHtml);
+        propDiv.querySelector('.prop-technical-data').innerHTML = DOMPurify.sanitize(onChainTechnicalDetails + technicalDetailsHtml);
+
+        if (isActiveList) {
+            propDiv.querySelector('.proposal-timer-container').style.display = 'flex';
+            propDiv.querySelector('.proposal-timer').id = `timer-${proposal.id}`;
+            const actionButtonsHtml = getProposalActionsHtml(proposal);
+            const actionsContainer = propDiv.querySelector('.proposal-actions-container');
+            actionsContainer.innerHTML = DOMPurify.sanitize(actionButtonsHtml, { ADD_ATTR: ['style'] });
+        }
+        targetElement.appendChild(proposalEl);
+    });
+}
 
 // --- Transaction & Signature Functions ---
 async function sendTransaction(contract, methodName, args) { try { const tx = await contract[methodName](...args); showCustomAlert(`Transaction sent... <a href="https://etherscan.io/tx/${tx.hash}" target="_blank">View on Etherscan</a>`); await tx.wait(); document.getElementById('custom-alert-overlay').style.display = 'none'; isAlertShowing = false; processAlertQueue(); return true; } catch (error) { document.getElementById('custom-alert-overlay').style.display = 'none'; isAlertShowing = false; processAlertQueue(); const reason = error.reason || error.data?.message || error.message || "Transaction rejected."; showCustomAlert(`Transaction failed: ${reason}`); return false; } }
 async function delegateToSelf() { if (await sendTransaction(new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, signer), 'delegate', [userAddress])) { showCustomAlert('Delegation successful!'); initializeApp(); } }
-async function stake() { const amount = document.getElementById('stake-amount').value; if (!amount || isNaN(amount) || parseFloat(amount) <= 0) return showCustomAlert('Please enter a valid amount.'); const cultContract = new ethers.Contract(CULT_TOKEN_ADDRESS, CULT_TOKEN_ABI, signer); const amountInWei = ethers.utils.parseUnits(amount, 18); const allowance = await cultContract.allowance(userAddress, DCULT_TOKEN_ADDRESS); if (allowance.lt(amountInWei)) { showCustomAlert("Approval transaction required first."); if (!await sendTransaction(cultContract, 'approve', [DCULT_TOKEN_ADDRESS, ethers.constants.MaxUint256])) return; showCustomAlert('Approval successful! You can now stake.'); } if (await sendTransaction(new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, signer), 'deposit', [0, amountInWei])) { showCustomAlert('Stake successful!'); initializeApp(); } }
-async function unstake() { const amount = document.getElementById('unstake-amount').value; if (!amount || isNaN(amount) || parseFloat(amount) <= 0) return showCustomAlert('Please enter a valid amount.'); if (await sendTransaction(new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, signer), 'withdraw', [0, ethers.utils.parseUnits(amount, 18)])) { showCustomAlert('Unstake successful!'); initializeApp(); } }
+
+async function stake() {
+    const amountInput = document.getElementById('stake-amount');
+    const amount = amountInput.value;
+    if (!amount || isNaN(amount) || parseFloat(amount) <= 0) return showCustomAlert('Please enter a valid amount.');
+    const cultContract = new ethers.Contract(CULT_TOKEN_ADDRESS, CULT_TOKEN_ABI, signer);
+    const amountInWei = ethers.utils.parseUnits(amount, 18);
+    const allowance = await cultContract.allowance(userAddress, DCULT_TOKEN_ADDRESS);
+    if (allowance.lt(amountInWei)) {
+        showCustomAlert("Approval transaction required first.");
+        if (!await sendTransaction(cultContract, 'approve', [DCULT_TOKEN_ADDRESS, ethers.constants.MaxUint256])) return;
+        showCustomAlert('Approval successful! You can now stake.');
+    }
+    if (await sendTransaction(new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, signer), 'deposit', [0, amountInWei])) {
+        showCustomAlert('Stake successful!');
+        amountInput.value = '';
+        initializeApp();
+    }
+}
+
+async function unstake() {
+    const amountInput = document.getElementById('unstake-amount');
+    const amount = amountInput.value;
+    if (!amount || isNaN(amount) || parseFloat(amount) <= 0) return showCustomAlert('Please enter a valid amount.');
+    if (await sendTransaction(new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, signer), 'withdraw', [0, ethers.utils.parseUnits(amount, 18)])) {
+        showCustomAlert('Unstake successful!');
+        amountInput.value = '';
+        initializeApp();
+    }
+}
+
 async function castVote(proposalId, support) { if (await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, signer), 'castVote', [proposalId, support])) { showCustomAlert(`Vote for Proposal #${proposalId} successful!`); initialLoad(); } }
 async function signVote(proposalId, support) { try { if ((await new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, provider).getVotes(userAddress)).isZero()) return showCustomAlert("You must delegate voting power to yourself first."); const { chainId } = await provider.getNetwork(); const domain = { name: "Cult Governor Bravo", chainId, verifyingContract: GOVERNOR_BRAVO_ADDRESS }; const types = { Ballot: [ { name: "proposalId", type: "uint256" }, { name: "support", type: "uint8" } ] }; const value = { proposalId: Number(proposalId), support }; const signature = await signer._signTypedData(domain, types, value); const reqData = { proposalId: Number(proposalId), support, walletAddress: userAddress, signature: { ...ethers.utils.splitSignature(signature), proposalId: Number(proposalId), support } }; showCustomAlert("Submitting vote signature..."); const response = await fetch(`${API_BASE_URL}proposal/signature`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reqData) }); if (!response.ok) throw new Error((await response.json()).message || "API request failed"); showCustomAlert(`Vote Signature for Proposal #${proposalId} Submitted!`); await updateVoteCounterForProposal(proposalId); } catch (error) { showCustomAlert("Vote signature failed: " + (error.message || "User denied.")); } }
 async function pushAllVotesForProposal(proposalId) { try { showCustomAlert(`Fetching pending votes for Proposal #${proposalId}...`); const response = await fetch(`${API_BASE_URL}proposal/signatures/${proposalId}`); if (!response.ok) throw new Error("API fetch failed."); const { data: signatures } = await response.json(); if (!signatures || signatures.length === 0) return showCustomAlert("No pending vote signatures to submit."); if (await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_2_ADDRESS, GOVERNOR_BRAVO_2_ABI, signer), 'castVoteBySigs', [signatures])) { showCustomAlert(`Vote batch for Proposal #${proposalId} submitted!`); setTimeout(initialLoad, 2000); } } catch(e) { showCustomAlert("Failed to push votes: " + e.message); } }
 async function updateVoteCounterForProposal(proposalId) { const proposalDiv = document.querySelector(`.proposal[data-proposal-id='${proposalId}']`); if (!proposalDiv) return; const pushButton = proposalDiv.querySelector('.push-votes-btn'); const counterEl = proposalDiv.querySelector('.vote-counter'); if (!pushButton || !counterEl) return; try { const response = await fetch(`${API_BASE_URL}proposal/signatures/${proposalId}`); const { data: signatures = [] } = await response.json(); counterEl.textContent = signatures.length; pushButton.style.display = (signatures.length > 0) ? 'inline-block' : 'none'; } catch(e) { counterEl.textContent = "N/A"; pushButton.style.display = 'none'; } }
-async function submitProposal() { const investeeWallet = document.getElementById('p-investeeWallet').value.trim(); if (!ethers.utils.isAddress(investeeWallet)) return showCustomAlert('A valid Investee Wallet address is mandatory.'); const proposalData = { projectName: document.getElementById('p-projectName').value.trim(), wallet: investeeWallet, shortDescription: document.getElementById('p-shortDescription').value.trim(), socialChannel: document.getElementById('p-socialChannel').value.trim() || "N/A", links: document.getElementById('p-links').value.trim() || "N/A", manifestoOutlinedFit: document.getElementById('p-manifestoOutlinedFit').value.trim() || "N/A", returnModel: document.getElementById('p-returnModel').value.trim() || "N/A", proposedTimeline: document.getElementById('p-proposedTimeline').value.trim() || "N/A", fundsStoredHeldUtilised: document.getElementById('p-fundsStoredHeldUtilised').value.trim() || "N/A", guardianAddress: userAddress }; const descriptionString = JSON.stringify(proposalData, null, 2); const iface = new ethers.utils.Interface(["function _setInvesteeDetails(address)"]); const calldatas = [iface.encodeFunctionData("_setInvesteeDetails", [investeeWallet])]; if (await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, signer), 'propose', [[GOVERNOR_BRAVO_ADDRESS], [0], ["_setInvesteeDetails(address)"], calldatas, descriptionString])) { showCustomAlert('Proposal submitted successfully!'); document.getElementById('proposal-form-fields').querySelectorAll('input, textarea').forEach(el => el.value = ''); initialLoad(); } }
+async function submitProposal() {
+    const investeeWallet = document.getElementById('p-investeeWallet').value.trim();
+    if (!ethers.utils.isAddress(investeeWallet)) return showCustomAlert('A valid Investee Wallet address is mandatory.');
+    const proposalData = { projectName: document.getElementById('p-projectName').value.trim(), wallet: investeeWallet, shortDescription: document.getElementById('p-shortDescription').value.trim(), socialChannel: document.getElementById('p-socialChannel').value.trim() || "N/A", links: document.getElementById('p-links').value.trim() || "N/A", manifestoOutlinedFit: document.getElementById('p-manifestoOutlinedFit').value.trim() || "N/A", returnModel: document.getElementById('p-returnModel').value.trim() || "N/A", proposedTimeline: document.getElementById('p-proposedTimeline').value.trim() || "N/A", fundsStoredHeldUtilised: document.getElementById('p-fundsStoredHeldUtilised').value.trim() || "N/A", guardianAddress: userAddress };
+    const descriptionString = JSON.stringify(proposalData, null, 2);
+    const iface = new ethers.utils.Interface(["function _setInvesteeDetails(address)"]);
+    const calldatas = [iface.encodeFunctionData("_setInvesteeDetails", [investeeWallet])];
+    if (await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, signer), 'propose', [[GOVERNOR_BRAVO_ADDRESS], [0], ["_setInvesteeDetails(address)"], calldatas, descriptionString])) {
+        showCustomAlert('Proposal submitted successfully!');
+        document.getElementById('proposal-form-fields').querySelectorAll('input, textarea').forEach(el => el.value = '');
+        initialLoad();
+    }
+}
 async function cancelProposal(proposalId) { if (window.confirm(`Cancel proposal #${proposalId}?`) && await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, signer), 'cancel', [proposalId])) { showCustomAlert('Proposal canceled!'); initialLoad(); } }
 async function queueProposal(proposalId) { if (window.confirm(`Queue proposal #${proposalId}?`) && await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, signer), 'queue', [proposalId])) { showCustomAlert('Proposal queued!'); initialLoad(); } }
 async function executeProposal(proposalId) { if (window.confirm(`Execute proposal #${proposalId}?`) && await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, signer), 'execute', [proposalId])) { showCustomAlert('Proposal executed!'); initialLoad(); } }
@@ -472,7 +691,6 @@ function safeAddEventListener(id, event, handler) {
 window.addEventListener('DOMContentLoaded', () => {
     fetchAndDisplayRepoUpdate();
     
-    // Populate the currency dropdown
     for (const [code, label] of Object.entries(SUPPORTED_CURRENCIES)) {
         const item = document.createElement('button');
         item.className = 'dropdown-item';
@@ -505,6 +723,12 @@ window.addEventListener('DOMContentLoaded', () => {
     });
     safeAddEventListener('close-reminder-btn', 'click', () => { document.getElementById('reminder-banner').style.display = 'none'; });
     
+    safeAddEventListener('close-top50-notice-btn', 'click', () => {
+        const noticeContainer = document.getElementById('top50-notice-container');
+        if (noticeContainer) noticeContainer.style.display = 'none';
+        if (noticeTimeout) clearTimeout(noticeTimeout); 
+    });
+
     const disclaimerOverlay = document.getElementById('disclaimer-overlay');
     if (disclaimerOverlay && localStorage.getItem('disclaimerAccepted') !== 'true') {
         disclaimerOverlay.style.display = 'flex';
@@ -576,7 +800,7 @@ window.addEventListener('DOMContentLoaded', () => {
         if (!proposalDiv) return;
         const proposalId = proposalDiv.dataset.proposalId;
         const button = e.target.closest('button');
-        if (!button) return;
+        if (!button || !proposalId) return;
         
         if (button.classList.contains('vote-for-btn')) castVote(proposalId, 1);
         else if (button.classList.contains('vote-against-btn')) castVote(proposalId, 0);
@@ -596,10 +820,6 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
-
-
-
-
 
 window.addEventListener('DOMContentLoaded', () => {
   const root = document.documentElement;
