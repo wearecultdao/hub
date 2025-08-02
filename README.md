@@ -10,7 +10,7 @@ A community-built, open-source interface for interacting with the CULT DAO ecosy
 *   **Staking & Rewards:** A simple interface to stake CULT, unstake dCULT, and claim your accumulated rewards from DAO investments.
 *   **DAO Governance:** View active and past proposals, submit new proposals (Guardians), and cast votes on-chain or via gasless signature.
 *   **In-Depth DAO Metrics:** A detailed dashboard tracking key on-chain statistics, including token supply, treasury value, liquidity, and market data.
-*   **Wallet Tracking:** Add multiple addresses to a watchlist to monitor combined holdings and delegation statuses—perfect for keeping an eye on your own wallets or DAO multisigs.
+*   **Wallet Tracking:** Add multiple addresses to a watchlist to monitor combined holdings and delegation statuses - perfect for keeping an eye on your own wallets or DAO multisigs.
 
 **Disclaimer:** This is a community-built tool and is not the official CultDAO website. It is currently in a pre-alpha stage. Please use it with caution and at your own risk.
 
