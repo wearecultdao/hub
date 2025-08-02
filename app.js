@@ -2,7 +2,7 @@
 
 import DOMPurify from 'https://cdn.jsdelivr.net/npm/dompurify@3.0.5/+esm';
 // =========================================================================
-// app.js - Version 0.0.42.0.79 (Final with Corrected Alert Flow)
+// app.js - Version 0.0.42.0.83 (FINAL - Correct Alert Flow)
 // =========================================================================
 
 // === Imports ===
@@ -25,6 +25,8 @@ const SUPPORTED_CURRENCIES = {
     usd: 'USD', eur: 'EUR', gbp: 'GBP', jpy: 'JPY', aud: 'AUD',
     cad: 'CAD', chf: 'CHF', btc: 'BTC', eth: 'ETH', xau: 'Gold', xag: 'Silver'
 };
+const DOMPURIFY_CONFIG = { ADD_ATTR: ['target'] };
+
 
 // --- Global State ---
 let provider, signer, userAddress;
@@ -71,7 +73,7 @@ function processAlertQueue() {
     const message = alertQueue.shift();
     const overlay = document.getElementById('custom-alert-overlay');
     const messageEl = document.getElementById('custom-alert-message');
-    messageEl.innerHTML = DOMPurify.sanitize(message);
+    messageEl.innerHTML = DOMPurify.sanitize(message, DOMPURIFY_CONFIG);
     overlay.style.display = 'flex';
 }
 function showCustomAlert(message) { alertQueue.push(message); processAlertQueue(); }
@@ -144,7 +146,7 @@ async function renderTrackedWallets() {
             <div class="info-item"></div><div class="info-item"></div>
             <div class="info-item" style="text-align: right;">
             <button class="btn3 remove-tracked-wallet-btn" data-wallet-address="${walletData.address}">Remove</button>
-            </div>`);
+            </div>`, { ...DOMPURIFY_CONFIG, ADD_ATTR: ['data-wallet-address'] });
         listContainer.appendChild(walletEl);
     }
     setMetric('combined-tracked-cult', formatNumber(totalCult));
@@ -481,9 +483,12 @@ function renderStaticMetrics() {
         document.getElementById('metric-unlock-liq').innerHTML = `<a href="${unicryptLockerUrl}" target="_blank" rel="noopener noreferrer">Nov 20, 2286</a>`;
     } catch (e) { /* silent fail */ }
 }
-// ... (Timer, Data Loading, and Proposal Rendering functions are unchanged) ...
+
+// --- TIMER FUNCTIONS ---
 function formatTimeRemaining(seconds) { if (seconds <= 0) return "Voting Ended"; const d = Math.floor(seconds / (3600*24)); const h = Math.floor((seconds % (3600*24)) / 3600); const m = Math.floor((seconds % 3600) / 60); const s = Math.floor(seconds % 60); return `${d > 0 ? d + "d " : ""}${h > 0 ? h + "h " : ""}${m > 0 ? m + "m " : ""}${s}s`; }
 async function startProposalTimer(proposalId, endBlock) { const timerEl = document.querySelector(`.proposal[data-proposal-id='${proposalId}'] .proposal-timer`); if (!timerEl || !provider) return; try { const currentBlockNumber = await provider.getBlockNumber(); const blocksRemaining = endBlock - currentBlockNumber; if (blocksRemaining <= 0) { timerEl.textContent = "Voting Ended"; return; } let secondsRemaining = blocksRemaining * averageBlockTime; if (activeTimers[proposalId]) clearInterval(activeTimers[proposalId]); const intervalId = setInterval(() => { secondsRemaining -= 1; if (secondsRemaining <= 0) { timerEl.textContent = "Voting Ended"; clearInterval(intervalId); delete activeTimers[proposalId]; } else { timerEl.textContent = formatTimeRemaining(secondsRemaining); } }, 1000); activeTimers[proposalId] = intervalId; } catch (error) { console.error(`Failed to start timer for proposal ${proposalId}:`, error); timerEl.textContent = "Error"; } }
+
+// --- DATA LOADING & RENDERING ---
 async function initialLoad() { const governorContract = new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, provider); const cultContract = new ethers.Contract(CULT_TOKEN_ADDRESS, CULT_TOKEN_ABI, provider); Object.values(activeTimers).forEach(clearInterval); activeTimers = {}; document.getElementById('active-proposal-list').innerHTML = '<p>...</p>'; document.getElementById('past-proposal-list').innerHTML = '<p>...</p>'; document.getElementById('load-more-btn').style.display = 'none'; allProposals = []; displayedPastProposalsCount = INITIAL_PAST_PROPOSAL_COUNT; try { const proposalCount = await governorContract.proposalCount(); const total = proposalCount.toNumber(); const [executedEvents, treasuryDisbursements, canceledEvents] = await Promise.all([ governorContract.queryFilter(governorContract.filters.ProposalExecuted(), 0, 'latest'), cultContract.queryFilter(cultContract.filters.Transfer(TREASURY_ADDRESS, null), 0, 'latest'), governorContract.queryFilter(governorContract.filters.ProposalCanceled(), 0, 'latest') ]); executionTxMap = new Map(executedEvents.filter(e => e.args).map(e => [e.args.id.toString(), e.transactionHash])); fundingTxMap = new Map(); treasuryDisbursements.forEach(event => { if (event.args.to.toLowerCase() !== DEAD_WALLET_1.toLowerCase()) fundingTxMap.set(event.args.to.toLowerCase(), event.transactionHash); }); 
     canceledSet = new Set(canceledEvents.filter(e => e.args).map(e => e.args.id.toString()));
     const initialProposals = await fetchProposalBatch(total, Math.max(1, total - INITIAL_PAST_PROPOSAL_COUNT + 1)); const activeProposals = initialProposals.filter(p => p.state === PROPOSAL_STATES.ACTIVE); allProposals = initialProposals.filter(p => p.state !== PROPOSAL_STATES.ACTIVE).sort((a, b) => b.id - a.id); renderProposals(activeProposals, document.getElementById('active-proposal-list'), { isActiveList: true }); activeProposals.forEach(proposal => { startProposalTimer(proposal.id, proposal.endBlock.toNumber()); updateVoteCounterForProposal(proposal.id); }); refreshPastProposalView(); await loadAllProposalsInBackground(total - initialProposals.length); if (await fetchOnChainAndPriceData()) { renderStaticMetrics(); recalculateAndRenderAllFiatValues(); } } catch (e) { console.error("Could not load proposals:", e); } }
@@ -594,8 +599,8 @@ function renderProposals(proposals, targetElement, { isActiveList = false, searc
             fundTxEl.querySelector('.prop-funding-tx-link').innerHTML = createAddressLink(fundingTxHash);
         }
 
-        propDiv.querySelector('.prop-description-container').innerHTML = DOMPurify.sanitize(descriptionHtml);
-        propDiv.querySelector('.prop-technical-data').innerHTML = DOMPurify.sanitize(onChainTechnicalDetails + technicalDetailsHtml);
+        propDiv.querySelector('.prop-description-container').innerHTML = DOMPurify.sanitize(descriptionHtml, DOMPURIFY_CONFIG);
+        propDiv.querySelector('.prop-technical-data').innerHTML = DOMPurify.sanitize(onChainTechnicalDetails + technicalDetailsHtml, DOMPURIFY_CONFIG);
 
         if (isActiveList) {
             propDiv.querySelector('.proposal-timer-container').style.display = 'flex';
@@ -609,7 +614,21 @@ function renderProposals(proposals, targetElement, { isActiveList = false, searc
 }
 
 // --- Transaction & Signature Functions ---
-async function sendTransaction(contract, methodName, args) { try { const tx = await contract[methodName](...args); showCustomAlert(`Transaction sent... <a href="https://etherscan.io/tx/${tx.hash}" target="_blank">View on Etherscan</a>`); await tx.wait(); document.getElementById('custom-alert-overlay').style.display = 'none'; isAlertShowing = false; processAlertQueue(); return true; } catch (error) { document.getElementById('custom-alert-overlay').style.display = 'none'; isAlertShowing = false; processAlertQueue(); const reason = error.reason || error.data?.message || error.message || "Transaction rejected."; showCustomAlert(`Transaction failed: ${reason}`); return false; } }
+async function sendTransaction(contract, methodName, args) {
+    try {
+        const tx = await contract[methodName](...args);
+        showCustomAlert(`Transaction sent... <a href="https://etherscan.io/tx/${tx.hash}" target="_blank">View on Etherscan</a>`);
+        await tx.wait();
+             return true;
+    } catch (error) {
+        document.getElementById('custom-alert-overlay').style.display = 'none';
+        isAlertShowing = false;
+        processAlertQueue();
+        const reason = error.reason || error.data?.message || error.message || "Transaction rejected.";
+        showCustomAlert(`Transaction failed: ${reason}`);
+        return false;
+    }
+}
 async function delegateToSelf() { if (await sendTransaction(new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, signer), 'delegate', [userAddress])) { showCustomAlert('Delegation successful!'); initializeApp(); } }
 async function stake() {
     const amountInput = document.getElementById('stake-amount');
@@ -640,8 +659,61 @@ async function unstake() {
     }
 }
 async function castVote(proposalId, support) { if (await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, signer), 'castVote', [proposalId, support])) { showCustomAlert(`Vote for Proposal #${proposalId} successful!`); initialLoad(); } }
-async function signVote(proposalId, support) { try { if ((await new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, provider).getVotes(userAddress)).isZero()) return showCustomAlert("You must delegate voting power to yourself first."); const { chainId } = await provider.getNetwork(); const domain = { name: "Cult Governor Bravo", chainId, verifyingContract: GOVERNOR_BRAVO_ADDRESS }; const types = { Ballot: [ { name: "proposalId", type: "uint256" }, { name: "support", type: "uint8" } ] }; const value = { proposalId: Number(proposalId), support }; const signature = await signer._signTypedData(domain, types, value); const reqData = { proposalId: Number(proposalId), support, walletAddress: userAddress, signature: { ...ethers.utils.splitSignature(signature), proposalId: Number(proposalId), support } }; showCustomAlert("Submitting vote signature..."); const response = await fetch(`${API_BASE_URL}proposal/signature`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reqData) }); if (!response.ok) throw new Error((await response.json()).message || "API request failed"); showCustomAlert(`Vote Signature for Proposal #${proposalId} Submitted!`); await updateVoteCounterForProposal(proposalId); } catch (error) { showCustomAlert("Vote signature failed: " + (error.message || "User denied.")); } }
-async function pushAllVotesForProposal(proposalId) { try { showCustomAlert(`Fetching pending votes for Proposal #${proposalId}...`); const response = await fetch(`${API_BASE_URL}proposal/signatures/${proposalId}`); if (!response.ok) throw new Error("API fetch failed."); const { data: signatures } = await response.json(); if (!signatures || signatures.length === 0) return showCustomAlert("No pending vote signatures to submit."); if (await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_2_ADDRESS, GOVERNOR_BRAVO_2_ABI, signer), 'castVoteBySigs', [signatures])) { showCustomAlert(`Vote batch for Proposal #${proposalId} submitted!`); setTimeout(initialLoad, 2000); } } catch(e) { showCustomAlert("Failed to push votes: " + e.message); } }
+async function signVote(proposalId, support) {
+    try {
+        if ((await new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, provider).getVotes(userAddress)).isZero()) {
+            return showCustomAlert("You must delegate voting power to yourself first.");
+        }
+        const { chainId } = await provider.getNetwork();
+        const domain = { name: "Cult Governor Bravo", chainId, verifyingContract: GOVERNOR_BRAVO_ADDRESS };
+        const types = { Ballot: [ { name: "proposalId", type: "uint256" }, { name: "support", type: "uint8" } ] };
+        const value = { proposalId: Number(proposalId), support };
+        const signature = await signer._signTypedData(domain, types, value);
+        const reqData = { proposalId: Number(proposalId), support, walletAddress: userAddress, signature: { ...ethers.utils.splitSignature(signature), proposalId: Number(proposalId), support } };
+        
+        showCustomAlert("Submitting vote signature...");
+        const response = await fetch(`${API_BASE_URL}proposal/signature`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reqData) });
+        
+        document.getElementById('custom-alert-overlay').style.display = 'none';
+        isAlertShowing = false;
+        processAlertQueue();
+
+        if (!response.ok) throw new Error((await response.json()).message || "API request failed");
+        
+        showCustomAlert(`Vote Signature for Proposal #${proposalId} Submitted!`);
+        await updateVoteCounterForProposal(proposalId);
+    } catch (error) {
+        if (document.getElementById('custom-alert-overlay').style.display === 'flex') {
+            document.getElementById('custom-alert-overlay').style.display = 'none';
+            isAlertShowing = false;
+            processAlertQueue();
+        }
+        showCustomAlert("Vote signature failed: " + (error.message || "User denied."));
+    }
+}
+async function pushAllVotesForProposal(proposalId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}proposal/signatures/${proposalId}`);
+        if (!response.ok) throw new Error("API fetch failed.");
+        const { data: signatures } = await response.json();
+        if (!signatures || signatures.length === 0) {
+            return showCustomAlert("No pending vote signatures to submit.");
+        }
+        if (await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_2_ADDRESS, GOVERNOR_BRAVO_2_ABI, signer), 'castVoteBySigs', [signatures])) {
+            showCustomAlert(`Vote batch for Proposal #${proposalId} submitted!`);
+            const proposalDiv = document.querySelector(`.proposal[data-proposal-id='${proposalId}']`);
+            if (proposalDiv) {
+                const counterEl = proposalDiv.querySelector('.vote-counter');
+                const pushBtn = proposalDiv.querySelector('.push-votes-btn');
+                if(counterEl) counterEl.textContent = '0';
+                if(pushBtn) pushBtn.style.display = 'none';
+            }
+            setTimeout(initialLoad, 3000);
+        }
+    } catch(e) {
+        showCustomAlert("Failed to push votes: " + e.message);
+    }
+}
 async function updateVoteCounterForProposal(proposalId) { const proposalDiv = document.querySelector(`.proposal[data-proposal-id='${proposalId}']`); if (!proposalDiv) return; const pushButton = proposalDiv.querySelector('.push-votes-btn'); const counterEl = proposalDiv.querySelector('.vote-counter'); if (!pushButton || !counterEl) return; try { const response = await fetch(`${API_BASE_URL}proposal/signatures/${proposalId}`); const { data: signatures = [] } = await response.json(); counterEl.textContent = signatures.length; pushButton.style.display = (signatures.length > 0) ? 'inline-block' : 'none'; } catch(e) { counterEl.textContent = "N/A"; pushButton.style.display = 'none'; } }
 async function submitProposal() {
     const investeeWallet = document.getElementById('p-investeeWallet').value.trim();
@@ -672,52 +744,42 @@ async function signDelegation() {
         const value = { delegatee: userAddress, nonce: nonce.toNumber(), expiry };
 
         const signature = await signer._signTypedData(domain, types, value);
-        
         const reqData = { walletAddress: userAddress, signature: { ...value, ...ethers.utils.splitSignature(signature) } };
         
         showCustomAlert("Submitting signature to community pool...");
         const response = await fetch(`${API_BASE_URL}delegate/signature`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reqData) });
         
+        document.getElementById('custom-alert-overlay').style.display = 'none';
+        isAlertShowing = false;
+        processAlertQueue();
+
         if (!response.ok) {
             throw new Error((await response.json()).message || "API request failed");
         }
         
-        document.getElementById('custom-alert-overlay').style.display = 'none';
-        isAlertShowing = false;
-        processAlertQueue();
-        
-        showCustomAlert("Delegate Signature Submitted! Counter will update.");
-        
+        showCustomAlert("Delegate Signature Submitted!");
         await updateDelegationCounter();
     } catch (error) {
-        document.getElementById('custom-alert-overlay').style.display = 'none';
-        isAlertShowing = false;
-        processAlertQueue();
+        if (document.getElementById('custom-alert-overlay').style.display === 'flex') {
+            document.getElementById('custom-alert-overlay').style.display = 'none';
+            isAlertShowing = false;
+            processAlertQueue();
+        }
         showCustomAlert("Signing failed: " + (error.message || "User denied."));
     }
 }
-
-// --- START OF FIX: Push Delegation UI Feedback ---
 async function pushAllDelegations() {
     try {
-        showCustomAlert("Fetching pending signatures...");
         const response = await fetch(`${API_BASE_URL}delegate/signatures`);
         if (!response.ok) throw new Error("API fetch failed.");
         const { data: signatures } = await response.json();
         
-        // Hide the "fetching" alert if there are no signatures and show a specific message.
         if (!signatures || signatures.length === 0) {
-            document.getElementById('custom-alert-overlay').style.display = 'none';
-            isAlertShowing = false;
-            processAlertQueue();
             return showCustomAlert("No pending delegation signatures to submit.");
         }
         
-        // If the transaction is successful...
         if (await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_2_ADDRESS, GOVERNOR_BRAVO_2_ABI, signer), 'delegateBySigs', [signatures])) {
-            // The `sendTransaction` function will have already shown the Etherscan link alert and closed it.
-            // Now, we queue the success message and manually update the UI for instant feedback.
-            showCustomAlert('Delegation batch submitted successfully!');
+            alertQueue.push('Delegation batch submitted successfully!');
             
             const pushButton = document.getElementById('push-delegates-btn');
             if (pushButton) {
@@ -729,8 +791,6 @@ async function pushAllDelegations() {
         showCustomAlert("Failed to push delegations: " + e.message);
     }
 }
-// --- END OF FIX ---
-
 
 // --- Event Listeners ---
 function safeAddEventListener(id, event, handler) {
