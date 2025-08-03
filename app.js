@@ -2,7 +2,7 @@
 
 import DOMPurify from 'https://cdn.jsdelivr.net/npm/dompurify@3.0.5/+esm';
 // =========================================================================
-// app.js - Version 0.0.42.0.87 (FINAL - Definitive UI Polish)
+// app.js - Version 0.0.42.0.88 (FINAL - Definitive Polish)
 // =========================================================================
 
 // === Imports ===
@@ -160,6 +160,18 @@ async function renderTrackedWallets() {
 async function connectWallet() { if (typeof window.ethereum === 'undefined') return alert('Please install MetaMask.'); try { provider = new ethers.providers.Web3Provider(window.ethereum); await provider.send("eth_requestAccounts", []); signer = provider.getSigner(); userAddress = await signer.getAddress(); onChainDataCache = null; connectBtn.textContent = `${userAddress.substring(0, 6)}...`; connectBtn.disabled = false; dappContent.style.display = 'block'; document.getElementById('etherscan-link').href = `https://etherscan.io/address/${userAddress}`; document.getElementById('p-proposerWallet').innerHTML = createAddressLink(userAddress); await initializeApp(); } catch (error) { console.error("Failed to connect wallet:", error); } }
 function disconnectWallet() { location.reload(); }
 function copyUserAddressToClipboard() { if (userAddress) { copyTextToClipboard(userAddress); walletDropdown.classList.remove('show'); } }
+
+// MODIFIED: Created a helper function for the final UI state change
+function autoOpenActiveProposals() {
+    const activeProposalsDetails = document.getElementById('details-active-proposals');
+    if (activeProposalsDetails) {
+        const activeProposalsCount = parseInt(document.getElementById('metric-active-proposals').textContent, 10);
+        if (!isNaN(activeProposalsCount) && activeProposalsCount > 0) {
+            activeProposalsDetails.open = true;
+        }
+    }
+}
+
 async function initializeApp() { 
     if (!signer) return; 
     const savedCurrency = localStorage.getItem('preferredCurrency');
@@ -175,6 +187,9 @@ async function initializeApp() {
     await initialLoad(); 
     await Promise.all([ updateGuardianThreshold(), checkUserRights() ]);
     await refreshAllTrackedWalletData();
+
+    // MODIFIED: Calling the auto-open function at the absolute end of initialization.
+    autoOpenActiveProposals();
 }
 async function handleAddWalletInput() {
   const inputField = document.getElementById('track-wallet-input');
@@ -428,12 +443,6 @@ function renderStaticMetrics() {
     
     const activeProposalsCount = uniqueProposals.filter(p => p.state === 1).length;
     setMetric('metric-active-proposals', activeProposalsCount);
-
-    // MODIFIED: This is the definitive place to open the active proposals section
-    const activeProposalsDetails = document.getElementById('details-active-proposals');
-    if (activeProposalsDetails) {
-        activeProposalsDetails.open = activeProposalsCount > 0;
-    }
 
     setMetric('metric-total-proposals', uniqueProposals.length);
     setMetric('metric-passed-proposals', passedProposals);
@@ -715,7 +724,14 @@ async function pushAllVotesForProposal(proposalId) {
         const uniqueSignatures = Array.from(uniqueSignatureMap.values());
         
         if (uniqueSignatures.length === 0) {
-            return showCustomAlert("No valid pending signatures found to submit.");
+            showCustomAlert("No valid pending signatures found to submit.");
+            // MODIFIED: Also hide the button now for better UX.
+            const proposalDiv = document.querySelector(`.proposal[data-proposal-id='${proposalId}']`);
+            if (proposalDiv) {
+                const pushBtn = proposalDiv.querySelector('.push-votes-btn');
+                if (pushBtn) pushBtn.style.display = 'none';
+            }
+            return;
         }
 
         const contractWithSigner = new ethers.Contract(GOVERNOR_BRAVO_2_ADDRESS, GOVERNOR_BRAVO_2_ABI, signer);
