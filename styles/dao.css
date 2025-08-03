@@ -128,7 +128,7 @@ body {
 #close-reminder-btn:hover { opacity: 1; }
 .container { max-width: 70%; margin: 40px auto 120px auto; padding: 0 20px; padding-bottom: 120px; }
 @media (max-width: 768px) {
-  .container { max-width: 98%; margin: 8px auto 80px auto; padding: 0 16px; padding-bottom: 60px; }
+  .container { max-width: 100%; margin: 8px auto 80px auto; padding: 0 16px; padding-bottom: 60px; }
 }
 
 .icon-button {
@@ -193,17 +193,24 @@ p { margin-bottom: 1rem; opacity: 0.9; }
 .btn:hover:not(:disabled) { background: var(--color-text); color: var(--color-bg); border-color: var(--color-text); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* MODIFIED: Fully theme-aware secondary button style */
 .btn2 {
-    background: var(--color-red); color: var(--color-text); border: 1px solid var(--color-border);
-    padding: 10px 20px; font-family: var(--font-main); font-size: 1rem; font-weight: 600;
-    cursor: pointer; transition: all 0.2s ease-in-out;
-    margin-right: 10px; border-radius: 4px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    padding: 10px 20px;
+    font-family: var(--font-main);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    margin-right: 10px;
+    border-radius: 4px;
 }
-/* MODIFIED: Changed hover state for better readability and consistency */
 .btn2:hover:not(:disabled) { 
-    background: var(--color-text); 
-    color: var(--color-bg); 
-    border-color: var(--color-text); 
+    background: var(--btn-bg);
+    border-color: var(--color-btn-bg);
+    color: var(--color-text);
 }
 .btn2:disabled { opacity: 0.5; cursor: not-allowed; }
 .label-line { display: flex; justify-content: space-between; align-items: baseline;  }
@@ -232,8 +239,9 @@ p { margin-bottom: 1rem; opacity: 0.9; }
 
 .wallet-dropdown {
     display: none; position: absolute; top: 100%; right: 0;
-    background-color: var(--color-red); border: 1px solid var(--color-border);
- z-index: 10; margin-top: 10px; padding: 5px; border-radius: 4px;
+    background-color: var(--wallet-dropdown-bg); /* Theme-aware */
+    border: 1px solid var(--color-border);
+    z-index: 10; margin-top: 10px; padding: 5px; border-radius: 4px;
     max-height: 500px; overflow-y: auto;
 }
 .wallet-dropdown .dropdown-item {
@@ -245,7 +253,7 @@ p { margin-bottom: 1rem; opacity: 0.9; }
 .wallet-dropdown .dropdown-item:hover { background-color: var(--color-surface); }
 .wallet-dropdown.show { display: block; }
 
-.ui-section { background: rgba(0,0,0,0.3); backdrop-filter: blur(0px); border: 0px solid var(--color-border); padding: 25px; margin-top: 30px; border-radius: 8px; }
+.ui-section { background: rgba(0,0,0,0.3); backdrop-filter: var(--ui-section-blur); border: 0px solid var(--color-border); padding: 25px; margin-top: 30px; border-radius: 8px; }
 .dimmed-section { opacity: 0.4; pointer-events: none; }
 .eligibility-notice { 
     color: var(--color-orange); font-size: 0.9rem; margin-top: 20px; padding: 10px 20px;
