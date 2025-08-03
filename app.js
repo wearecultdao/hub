@@ -1,8 +1,9 @@
+// --- START OF FINAL app.js ---
 
 import DOMPurify from 'https://cdn.jsdelivr.net/npm/dompurify@3.0.5/+esm';
 // =========================================================================
-// app.js - Version 0.8 / fl0ri0
-// ==============================================================================================
+// app.js - Version 0.8 fl0ri0
+// =========================================================================
 
 // === Imports ===
 import {
@@ -47,6 +48,7 @@ let alertQueue = [];
 let isAlertShowing = false;
 let isUserGuardian = false;
 let noticeTimeout;
+let openProposalsState = new Set(); 
 
 // --- DOM Elements ---
 const connectBtn = document.getElementById('connect-wallet-btn');
@@ -157,19 +159,7 @@ async function renderTrackedWallets() {
 
 // --- Core Application Logic ---
 async function connectWallet() { if (typeof window.ethereum === 'undefined') return alert('Please install MetaMask.'); try { provider = new ethers.providers.Web3Provider(window.ethereum); await provider.send("eth_requestAccounts", []); signer = provider.getSigner(); userAddress = await signer.getAddress(); onChainDataCache = null; connectBtn.textContent = `${userAddress.substring(0, 6)}...`; connectBtn.disabled = false; dappContent.style.display = 'block'; document.getElementById('etherscan-link').href = `https://etherscan.io/address/${userAddress}`; document.getElementById('p-proposerWallet').innerHTML = createAddressLink(userAddress); await initializeApp(); } catch (error) { console.error("Failed to connect wallet:", error); } }
-function disconnectWallet() {
-    provider = null;
-    signer = null;
-    userAddress = null;
-    onChainDataCache = null; // Clear cached data
-
-    connectBtn.textContent = 'Connect Wallet';
-    connectBtn.disabled = false;
-    dappContent.style.display = 'none';
-    walletDropdown.classList.remove('show');
-
-    showCustomAlert('Wallet disconnected.');
-}
+function disconnectWallet() { location.reload(); }
 function copyUserAddressToClipboard() { if (userAddress) { copyTextToClipboard(userAddress); walletDropdown.classList.remove('show'); } }
 
 async function initializeApp() { 
@@ -188,7 +178,6 @@ async function initializeApp() {
     await Promise.all([ updateGuardianThreshold(), checkUserRights() ]);
     await refreshAllTrackedWalletData();
 
-    // MODIFIED: Calling the auto-open function at the absolute end of initialization with a delay.
     setTimeout(() => {
         const activeProposalsDetails = document.getElementById('details-active-proposals');
         if (activeProposalsDetails) {
@@ -533,9 +522,8 @@ async function initialLoad() {
         treasuryDisbursements.forEach(event => { if (event.args.to.toLowerCase() !== DEAD_WALLET_1.toLowerCase()) fundingTxMap.set(event.args.to.toLowerCase(), event.transactionHash); }); 
         canceledSet = new Set(canceledEvents.filter(e => e.args).map(e => e.args.id.toString()));
         
-        // MODIFIED: This is the definitive, non-destructive data handling logic
         const initialProposals = await fetchProposalBatch(total, Math.max(1, total - INITIAL_PAST_PROPOSAL_COUNT + 1)); 
-        allProposals = initialProposals; // Set the master list first.
+        allProposals = initialProposals; 
         
         const activeAndPendingProposals = allProposals.filter(p => p.state === PROPOSAL_STATES.PENDING || p.state === PROPOSAL_STATES.ACTIVE);
         const pastProposals = allProposals.filter(p => p.state !== PROPOSAL_STATES.PENDING && p.state !== PROPOSAL_STATES.ACTIVE).sort((a, b) => b.id - a.id);
@@ -575,7 +563,7 @@ async function loadAllProposalsInBackground(startingId) {
         currentId = batchEndId - 1; 
     } 
     console.log("All historical proposals loaded in background."); 
-    renderStaticMetrics(); // Re-render stats with complete data
+    renderStaticMetrics(); 
     refreshPastProposalView(); 
 }
 async function fetchProposalBatch(startId, endId) { const governorContract = new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, provider); const promises = []; const events = await governorContract.queryFilter(governorContract.filters.ProposalCreated(), 0, 'latest'); const descriptionMap = new Map(events.map(e => [e.args.id.toString(), e.args.description])); for (let i = startId; i >= endId && i > 0; i--) { promises.push((async () => { try { const pData = await governorContract.proposals(i); if (pData.proposer === '0x0000000000000000000000000000000000000000') return null; const state = await governorContract.state(i); const actions = await governorContract.getActions(i); const description = descriptionMap.get(i.toString()) || "Description not found."; return { ...pData, id: i, state, actions, description }; } catch (err) { return null; } })()); } const results = await Promise.all(promises); return results.filter(p => p !== null); }
@@ -619,7 +607,7 @@ function getProposalActionsHtml(proposal) {
         buttonsHtml += `<button class="btn2 execute-btn">Execute</button>`;
     }
 
-    return `<div class="button-group" style="margin-top:30px;">${buttonsHtml}</div>`;
+    return `<div class="button-group" style="margin-top:20px;padding-top:20px;">${buttonsHtml}</div>`;
 }
 function renderProposals(proposals, targetElement, { isActiveList = false, searchTerm = '' } = {}) {
     targetElement.innerHTML = '';
@@ -640,7 +628,7 @@ function renderProposals(proposals, targetElement, { isActiveList = false, searc
             if (data.projectName) proposalTitle += `: ${data.projectName}`;
             const investeeWallet = data.wallet || data.investeeWallet;
             if (investeeWallet && ethers.utils.isAddress(investeeWallet)) {
-                fundingTxMap.set(investeeWallet.toLowerCase(), null); // Placeholder for later
+                fundingTxHash = fundingTxMap.get(investeeWallet.toLowerCase());
             }
             const technicalKeys = new Set(['range', 'rate', 'time', 'checkbox1', 'checkbox2']);
             const mainDetailsParts = [];
@@ -688,9 +676,9 @@ function renderProposals(proposals, targetElement, { isActiveList = false, searc
             execTxEl.querySelector('.prop-execution-tx-link').innerHTML = createAddressLink(executionTxHash);
         }
         const fundTxEl = propDiv.querySelector('.prop-funding-tx');
-        if (fundingTxMap.has(proposal.id.toString())) {
-             fundTxEl.style.display = 'block';
-             fundTxEl.querySelector('.prop-funding-tx-link').innerHTML = createAddressLink(fundingTxMap.get(proposal.id.toString()));
+        if (fundingTxHash) {
+            fundTxEl.style.display = 'block';
+            fundTxEl.querySelector('.prop-funding-tx-link').innerHTML = createAddressLink(fundingTxHash);
         }
 
         propDiv.querySelector('.prop-description-container').innerHTML = DOMPurify.sanitize(descriptionHtml, DOMPURIFY_CONFIG);
@@ -707,6 +695,18 @@ function renderProposals(proposals, targetElement, { isActiveList = false, searc
         }
         targetElement.appendChild(proposalEl);
     });
+
+    openProposalsState.forEach(id => {
+        const proposalEl = targetElement.querySelector(`.proposal[data-proposal-id='${id}']`);
+        if (proposalEl) {
+            const detailsEl = proposalEl.querySelector('.proposal-details');
+            if (detailsEl) {
+                detailsEl.style.display = 'block';
+                const button = proposalEl.querySelector('.view-details-btn');
+                if (button) button.innerHTML = 'Hide Details ▲';
+            }
+        }
+    });
 }
 
 // --- Transaction & Signature Functions ---
@@ -714,19 +714,27 @@ async function sendTransaction(contract, methodName, args) {
     try {
         const tx = await contract[methodName](...args);
         showCustomAlert(`Transaction sent... <a href="https://etherscan.io/tx/${tx.hash}" target="_blank">View on Etherscan</a>`);
-        await tx.wait();
-             return true;
+        return tx; 
     } catch (error) {
         document.getElementById('custom-alert-overlay').style.display = 'none';
         isAlertShowing = false;
         processAlertQueue();
         const reason = error.reason || error.data?.message || error.message || "Transaction rejected.";
         showCustomAlert(`Transaction failed: ${reason}`);
-        return false;
+        return null;
     }
 }
-async function delegateToSelf() { if (await sendTransaction(new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, signer), 'delegate', [userAddress])) { showCustomAlert('Delegation successful!'); initializeApp(); } }
+async function delegateToSelf() { 
+    openProposalsState = new Set([...document.querySelectorAll('.proposal .proposal-details[style*="block"]')].map(d => d.closest('.proposal').dataset.proposalId));
+    const tx = await sendTransaction(new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, signer), 'delegate', [userAddress]);
+    if (tx) { 
+        await tx.wait();
+        showCustomAlert('Delegation successful!'); 
+        setTimeout(initializeApp, 4000); 
+    } 
+}
 async function stake() {
+    openProposalsState = new Set([...document.querySelectorAll('.proposal .proposal-details[style*="block"]')].map(d => d.closest('.proposal').dataset.proposalId));
     const amountInput = document.getElementById('stake-amount');
     const amount = amountInput.value;
     if (!amount || isNaN(amount) || parseFloat(amount) <= 0) return showCustomAlert('Please enter a valid amount.');
@@ -735,26 +743,41 @@ async function stake() {
     const allowance = await cultContract.allowance(userAddress, DCULT_TOKEN_ADDRESS);
     if (allowance.lt(amountInWei)) {
         showCustomAlert("Approval transaction required first.");
-        if (!await sendTransaction(cultContract, 'approve', [DCULT_TOKEN_ADDRESS, ethers.constants.MaxUint256])) return;
+        const approveTx = await sendTransaction(cultContract, 'approve', [DCULT_TOKEN_ADDRESS, ethers.constants.MaxUint256]);
+        if (!approveTx) return;
+        await approveTx.wait();
         showCustomAlert('Approval successful! You can now stake.');
     }
-    if (await sendTransaction(new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, signer), 'deposit', [0, amountInWei])) {
+    const stakeTx = await sendTransaction(new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, signer), 'deposit', [0, amountInWei]);
+    if (stakeTx) {
+        await stakeTx.wait();
         showCustomAlert('Stake successful!');
         amountInput.value = '';
-        initializeApp();
+        setTimeout(initializeApp, 4000);
     }
 }
 async function unstake() {
+    openProposalsState = new Set([...document.querySelectorAll('.proposal .proposal-details[style*="block"]')].map(d => d.closest('.proposal').dataset.proposalId));
     const amountInput = document.getElementById('unstake-amount');
     const amount = amountInput.value;
     if (!amount || isNaN(amount) || parseFloat(amount) <= 0) return showCustomAlert('Please enter a valid amount.');
-    if (await sendTransaction(new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, signer), 'withdraw', [0, ethers.utils.parseUnits(amount, 18)])) {
+    const unstakeTx = await sendTransaction(new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, signer), 'withdraw', [0, ethers.utils.parseUnits(amount, 18)]);
+    if(unstakeTx) {
+        await unstakeTx.wait();
         showCustomAlert('Unstake successful!');
         amountInput.value = '';
-        initializeApp();
+        setTimeout(initializeApp, 4000);
     }
 }
-async function castVote(proposalId, support) { if (await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, signer), 'castVote', [proposalId, support])) { showCustomAlert(`Vote for Proposal #${proposalId} successful!`); initialLoad(); } }
+async function castVote(proposalId, support) { 
+    openProposalsState = new Set([...document.querySelectorAll('.proposal .proposal-details[style*="block"]')].map(d => d.closest('.proposal').dataset.proposalId));
+    const tx = await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, signer), 'castVote', [proposalId, support]);
+    if (tx) {
+        await tx.wait();
+        showCustomAlert(`Vote for Proposal #${proposalId} successful!`); 
+        setTimeout(initialLoad, 4000); 
+    } 
+}
 
 async function signVote(proposalId, support) {
     try {
@@ -804,7 +827,8 @@ async function signVote(proposalId, support) {
         }
         
         showCustomAlert(`Vote Signature for Proposal #${proposalId} Submitted!`);
-        await updateVoteCounterForProposal(proposalId);
+        openProposalsState = new Set([...document.querySelectorAll('.proposal .proposal-details[style*="block"]')].map(d => d.closest('.proposal').dataset.proposalId));
+        setTimeout(initialLoad, 4000);
 
     } catch (error) {
         if (document.getElementById('custom-alert-overlay').style.display === 'flex') {
@@ -826,34 +850,20 @@ async function pushAllVotesForProposal(proposalId) {
         if (!signatures || signatures.length === 0) {
             return showCustomAlert("No pending vote signatures to submit.");
         }
-
+        
+        openProposalsState = new Set([...document.querySelectorAll('.proposal .proposal-details[style*="block"]')].map(d => d.closest('.proposal').dataset.proposalId));
         const contractWithSigner = new ethers.Contract(GOVERNOR_BRAVO_2_ADDRESS, GOVERNOR_BRAVO_2_ABI, signer);
+        const tx = await sendTransaction(contractWithSigner, 'castVoteBySigs', [signatures]);
         
-        if (await sendTransaction(contractWithSigner, 'castVoteBySigs', [signatures])) {
-        
-            showCustomAlert(`Transaction succeeded! Refreshing data in a few moments...`);
-            
-
+        if (tx) {
             const proposalDiv = document.querySelector(`.proposal[data-proposal-id='${proposalId}']`);
             if (proposalDiv) {
-                const pushButton = proposalDiv.querySelector('.push-votes-btn');
-                if (pushButton) {
-                    pushButton.style.display = 'none';
-                }
+                const pushBtn = proposalDiv.querySelector('.push-votes-btn');
+                if (pushBtn) pushBtn.style.display = 'none';
             }
-
-            setTimeout(async () => {
-                showCustomAlert("Fetching latest on-chain data...");
-                
-                await updateVoteCounterForProposal(proposalId);
-                await updateBalances(); 
-                
-                document.getElementById('custom-alert-overlay').style.display = 'none';
-                isAlertShowing = false;
-                processAlertQueue();
-                showCustomAlert('Votes submitted and data has been refreshed!');
-
-            }, 20000); 
+            await tx.wait();
+            showCustomAlert(`Successfully submitted a batch of ${signatures.length} unique signatures! The app will now update.`);
+            setTimeout(initialLoad, 4000);
         }
 
     } catch (e) {
@@ -874,22 +884,62 @@ async function pushAllVotesForProposal(proposalId) {
 
 async function updateVoteCounterForProposal(proposalId) { const proposalDiv = document.querySelector(`.proposal[data-proposal-id='${proposalId}']`); if (!proposalDiv) return; const pushButton = proposalDiv.querySelector('.push-votes-btn'); const counterEl = proposalDiv.querySelector('.vote-counter'); if (!pushButton || !counterEl) return; try { const response = await fetch(`${API_BASE_URL}proposal/signatures/${proposalId}`); const { data: signatures = [] } = await response.json(); counterEl.textContent = signatures.length; pushButton.style.display = (signatures.length > 0) ? 'inline-block' : 'none'; } catch(e) { counterEl.textContent = "N/A"; pushButton.style.display = 'none'; } }
 async function submitProposal() {
+    openProposalsState = new Set([...document.querySelectorAll('.proposal .proposal-details[style*="block"]')].map(d => d.closest('.proposal').dataset.proposalId));
     const investeeWallet = document.getElementById('p-investeeWallet').value.trim();
     if (!ethers.utils.isAddress(investeeWallet)) return showCustomAlert('A valid Investee Wallet address is mandatory.');
     const proposalData = { projectName: document.getElementById('p-projectName').value.trim(), wallet: investeeWallet, shortDescription: document.getElementById('p-shortDescription').value.trim(), socialChannel: document.getElementById('p-socialChannel').value.trim() || "N/A", links: document.getElementById('p-links').value.trim() || "N/A", manifestoOutlinedFit: document.getElementById('p-manifestoOutlinedFit').value.trim() || "N/A", returnModel: document.getElementById('p-returnModel').value.trim() || "N/A", proposedTimeline: document.getElementById('p-proposedTimeline').value.trim() || "N/A", fundsStoredHeldUtilised: document.getElementById('p-fundsStoredHeldUtilised').value.trim() || "N/A", guardianAddress: userAddress };
     const descriptionString = JSON.stringify(proposalData, null, 2);
     const iface = new ethers.utils.Interface(["function _setInvesteeDetails(address)"]);
     const calldatas = [iface.encodeFunctionData("_setInvesteeDetails", [investeeWallet])];
-    if (await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, signer), 'propose', [[GOVERNOR_BRAVO_ADDRESS], [0], ["_setInvesteeDetails(address)"], calldatas, descriptionString])) {
+    const tx = await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, signer), 'propose', [[GOVERNOR_BRAVO_ADDRESS], [0], ["_setInvesteeDetails(address)"], calldatas, descriptionString]);
+    if (tx) {
+        await tx.wait();
         showCustomAlert('Proposal submitted successfully!');
         document.getElementById('proposal-form-fields').querySelectorAll('input, textarea').forEach(el => el.value = '');
-        initialLoad();
+        setTimeout(initialLoad, 4000);
     }
 }
-async function cancelProposal(proposalId) { if (window.confirm(`Cancel proposal #${proposalId}?`) && await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, signer), 'cancel', [proposalId])) { showCustomAlert('Proposal canceled!'); initialLoad(); } }
-async function queueProposal(proposalId) { if (window.confirm(`Queue proposal #${proposalId}?`) && await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, signer), 'queue', [proposalId])) { showCustomAlert('Proposal queued!'); initialLoad(); } }
-async function executeProposal(proposalId) { if (window.confirm(`Execute proposal #${proposalId}?`) && await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, signer), 'execute', [proposalId])) { showCustomAlert('Proposal executed!'); initialLoad(); } }
-async function claimRewards() { if (await sendTransaction(new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, signer), 'claimCULT', [0])) { showCustomAlert('Rewards claimed!'); initializeApp(); } }
+async function cancelProposal(proposalId) { 
+    if (window.confirm(`Cancel proposal #${proposalId}?`)) {
+        openProposalsState = new Set([...document.querySelectorAll('.proposal .proposal-details[style*="block"]')].map(d => d.closest('.proposal').dataset.proposalId));
+        const tx = await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, signer), 'cancel', [proposalId]);
+        if (tx) {
+            await tx.wait();
+            showCustomAlert('Proposal canceled!');
+            setTimeout(initialLoad, 4000);
+        }
+    }
+}
+async function queueProposal(proposalId) { 
+    if (window.confirm(`Queue proposal #${proposalId}?`)) {
+        openProposalsState = new Set([...document.querySelectorAll('.proposal .proposal-details[style*="block"]')].map(d => d.closest('.proposal').dataset.proposalId));
+        const tx = await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, signer), 'queue', [proposalId]);
+        if (tx) {
+            await tx.wait();
+            showCustomAlert('Proposal queued!');
+            setTimeout(initialLoad, 4000);
+        }
+    }
+}
+async function executeProposal(proposalId) { 
+    if (window.confirm(`Execute proposal #${proposalId}?`)) {
+        openProposalsState = new Set([...document.querySelectorAll('.proposal .proposal-details[style*="block"]')].map(d => d.closest('.proposal').dataset.proposalId));
+        const tx = await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, signer), 'execute', [proposalId]);
+        if (tx) {
+            await tx.wait();
+            showCustomAlert('Proposal executed!');
+            setTimeout(initialLoad, 4000);
+        }
+    }
+}
+async function claimRewards() { 
+    const tx = await sendTransaction(new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, signer), 'claimCULT', [0]);
+    if (tx) {
+        await tx.wait();
+        showCustomAlert('Rewards claimed!');
+        setTimeout(initializeApp, 4000);
+    }
+}
 
 async function signDelegation() {
     try {
@@ -916,7 +966,8 @@ async function signDelegation() {
         }
         
         showCustomAlert("Delegate Signature Submitted!");
-        await updateDelegationCounter();
+        openProposalsState = new Set([...document.querySelectorAll('.proposal .proposal-details[style*="block"]')].map(d => d.closest('.proposal').dataset.proposalId));
+        setTimeout(initialLoad, 4000);
     } catch (error) {
         if (document.getElementById('custom-alert-overlay').style.display === 'flex') {
             document.getElementById('custom-alert-overlay').style.display = 'none';
@@ -936,14 +987,14 @@ async function pushAllDelegations() {
             return showCustomAlert("No pending delegation signatures to submit.");
         }
         
-        if (await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_2_ADDRESS, GOVERNOR_BRAVO_2_ABI, signer), 'delegateBySigs', [signatures])) {
-            alertQueue.push('Delegation batch submitted successfully!');
-            
+        openProposalsState = new Set([...document.querySelectorAll('.proposal .proposal-details[style*="block"]')].map(d => d.closest('.proposal').dataset.proposalId));
+        const tx = await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_2_ADDRESS, GOVERNOR_BRAVO_2_ABI, signer), 'delegateBySigs', [signatures]);
+        if (tx) {
             const pushButton = document.getElementById('push-delegates-btn');
-            if (pushButton) {
-                pushButton.style.display = 'none';
-            }
-            setMetric('delegate-counter', '0');
+            if (pushButton) pushButton.style.display = 'none';
+            await tx.wait();
+            showCustomAlert('Delegation batch submitted successfully!');
+            setTimeout(initialLoad, 4000);
         }
     } catch(e) {
         showCustomAlert("Failed to push delegations: " + e.message);
@@ -1104,7 +1155,7 @@ window.addEventListener('DOMContentLoaded', () => {
       const themeToggleBtn = document.getElementById('theme-toggle');
       let isPublishTheme = true;
       function applyTheme(theme) {
-        if (theme === 'default') {
+        if (theme === 'publish') {
           root.style.setProperty('--background-image', 'radial-gradient(circle, #ff5252, black');
           root.style.setProperty('--btn-bg', '#333333');
           root.style.setProperty('--wallet-dropdown-bg', '#050505');
@@ -1115,7 +1166,7 @@ window.addEventListener('DOMContentLoaded', () => {
           root.style.setProperty('--btn-bg', '#ff5252');
           root.style.setProperty('--wallet-dropdown-bg', '#ff5252');
           root.style.setProperty('--ui-section-blur', 'blur(0px)');
-          root.style.setProperty('--theme-name', 'publish');
+          root.style.setProperty('--theme-name', 'default');
         }
       }
       themeToggleBtn.addEventListener('click', () => {
