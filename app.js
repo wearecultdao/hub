@@ -2,7 +2,7 @@
 
 import DOMPurify from 'https://cdn.jsdelivr.net/npm/dompurify@3.0.5/+esm';
 // =========================================================================
-// app.js - Version 0.0.42.0.83 (FINAL - Correct Alert Flow)
+// app.js - Version 0.0.42.0.86 (FINAL - Final Polish & Robust Push)
 // =========================================================================
 
 // === Imports ===
@@ -417,6 +417,7 @@ async function fetchOnChainAndPriceData() {
         return false;
     }
 }
+
 function renderStaticMetrics() {
     if (!onChainDataCache) return;
     
@@ -428,6 +429,7 @@ function renderStaticMetrics() {
     const activeProposalsCount = uniqueProposals.filter(p => p.state === 1).length;
     setMetric('metric-active-proposals', activeProposalsCount);
 
+    // MODIFIED: This is the definitive place to open the active proposals section
     const activeProposalsDetails = document.getElementById('details-active-proposals');
     if (activeProposalsDetails) {
         activeProposalsDetails.open = activeProposalsCount > 0;
@@ -491,7 +493,9 @@ async function startProposalTimer(proposalId, endBlock) { const timerEl = docume
 // --- DATA LOADING & RENDERING ---
 async function initialLoad() { const governorContract = new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, provider); const cultContract = new ethers.Contract(CULT_TOKEN_ADDRESS, CULT_TOKEN_ABI, provider); Object.values(activeTimers).forEach(clearInterval); activeTimers = {}; document.getElementById('active-proposal-list').innerHTML = '<p>...</p>'; document.getElementById('past-proposal-list').innerHTML = '<p>...</p>'; document.getElementById('load-more-btn').style.display = 'none'; allProposals = []; displayedPastProposalsCount = INITIAL_PAST_PROPOSAL_COUNT; try { const proposalCount = await governorContract.proposalCount(); const total = proposalCount.toNumber(); const [executedEvents, treasuryDisbursements, canceledEvents] = await Promise.all([ governorContract.queryFilter(governorContract.filters.ProposalExecuted(), 0, 'latest'), cultContract.queryFilter(cultContract.filters.Transfer(TREASURY_ADDRESS, null), 0, 'latest'), governorContract.queryFilter(governorContract.filters.ProposalCanceled(), 0, 'latest') ]); executionTxMap = new Map(executedEvents.filter(e => e.args).map(e => [e.args.id.toString(), e.transactionHash])); fundingTxMap = new Map(); treasuryDisbursements.forEach(event => { if (event.args.to.toLowerCase() !== DEAD_WALLET_1.toLowerCase()) fundingTxMap.set(event.args.to.toLowerCase(), event.transactionHash); }); 
     canceledSet = new Set(canceledEvents.filter(e => e.args).map(e => e.args.id.toString()));
-    const initialProposals = await fetchProposalBatch(total, Math.max(1, total - INITIAL_PAST_PROPOSAL_COUNT + 1)); const activeProposals = initialProposals.filter(p => p.state === PROPOSAL_STATES.ACTIVE); allProposals = initialProposals.filter(p => p.state !== PROPOSAL_STATES.ACTIVE).sort((a, b) => b.id - a.id); renderProposals(activeProposals, document.getElementById('active-proposal-list'), { isActiveList: true }); activeProposals.forEach(proposal => { startProposalTimer(proposal.id, proposal.endBlock.toNumber()); updateVoteCounterForProposal(proposal.id); }); refreshPastProposalView(); await loadAllProposalsInBackground(total - initialProposals.length); if (await fetchOnChainAndPriceData()) { renderStaticMetrics(); recalculateAndRenderAllFiatValues(); } } catch (e) { console.error("Could not load proposals:", e); } }
+    const initialProposals = await fetchProposalBatch(total, Math.max(1, total - INITIAL_PAST_PROPOSAL_COUNT + 1)); const activeProposals = initialProposals.filter(p => p.state === PROPOSAL_STATES.ACTIVE); allProposals = initialProposals.filter(p => p.state !== PROPOSAL_STATES.ACTIVE).sort((a, b) => b.id - a.id); renderProposals(activeProposals, document.getElementById('active-proposal-list'), { isActiveList: true }); activeProposals.forEach(proposal => { startProposalTimer(proposal.id, proposal.endBlock.toNumber()); updateVoteCounterForProposal(proposal.id); }); 
+    
+    refreshPastProposalView(); await loadAllProposalsInBackground(total - initialProposals.length); if (await fetchOnChainAndPriceData()) { renderStaticMetrics(); recalculateAndRenderAllFiatValues(); } } catch (e) { console.error("Could not load proposals:", e); } }
 async function loadAllProposalsInBackground(startingId) { if (startingId <= 0) return; let currentId = startingId; while (currentId > 0) { const batchEndId = Math.max(0, currentId - LOAD_MORE_BATCH_SIZE + 1); const newProposals = await fetchProposalBatch(currentId, batchEndId); const proposalMap = new Map(allProposals.map(p => [p.id, p])); newProposals.forEach(p => proposalMap.set(p.id, p)); allProposals = Array.from(proposalMap.values()).sort((a, b) => b.id - a.id); currentId = batchEndId - 1; } console.log("All historical proposals loaded in background."); refreshPastProposalView(); }
 async function fetchProposalBatch(startId, endId) { const governorContract = new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, provider); const promises = []; const events = await governorContract.queryFilter(governorContract.filters.ProposalCreated(), 0, 'latest'); const descriptionMap = new Map(events.map(e => [e.args.id.toString(), e.args.description])); for (let i = startId; i >= endId && i > 0; i--) { promises.push((async () => { try { const pData = await governorContract.proposals(i); if (pData.proposer === '0x0000000000000000000000000000000000000000') return null; const state = await governorContract.state(i); const actions = await governorContract.getActions(i); const description = descriptionMap.get(i.toString()) || "Description not found."; return { ...pData, id: i, state, actions, description }; } catch (err) { return null; } })()); } const results = await Promise.all(promises); return results.filter(p => p !== null); }
 function displayMoreProposals() { displayedPastProposalsCount += LOAD_MORE_BATCH_SIZE; refreshPastProposalView(); }
@@ -691,29 +695,47 @@ async function signVote(proposalId, support) {
         showCustomAlert("Vote signature failed: " + (error.message || "User denied."));
     }
 }
+
 async function pushAllVotesForProposal(proposalId) {
     try {
         const response = await fetch(`${API_BASE_URL}proposal/signatures/${proposalId}`);
-        if (!response.ok) throw new Error("API fetch failed.");
-        const { data: signatures } = await response.json();
-        if (!signatures || signatures.length === 0) {
+        if (!response.ok) throw new Error("API fetch failed to get signatures.");
+        const { data: rawSignatures } = await response.json();
+
+        if (!rawSignatures || rawSignatures.length === 0) {
             return showCustomAlert("No pending vote signatures to submit.");
         }
-        if (await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_2_ADDRESS, GOVERNOR_BRAVO_2_ABI, signer), 'castVoteBySigs', [signatures])) {
-            showCustomAlert(`Vote batch for Proposal #${proposalId} submitted!`);
-            const proposalDiv = document.querySelector(`.proposal[data-proposal-id='${proposalId}']`);
-            if (proposalDiv) {
-                const counterEl = proposalDiv.querySelector('.vote-counter');
-                const pushBtn = proposalDiv.querySelector('.push-votes-btn');
-                if(counterEl) counterEl.textContent = '0';
-                if(pushBtn) pushBtn.style.display = 'none';
+
+        const uniqueSignatureMap = new Map();
+        for (const sig of rawSignatures) {
+            if (sig && sig.walletAddress) {
+                uniqueSignatureMap.set(sig.walletAddress.toLowerCase(), sig);
             }
+        }
+        const uniqueSignatures = Array.from(uniqueSignatureMap.values());
+        
+        const contractWithSigner = new ethers.Contract(GOVERNOR_BRAVO_2_ADDRESS, GOVERNOR_BRAVO_2_ABI, signer);
+        if (await sendTransaction(contractWithSigner, 'castVoteBySigs', [uniqueSignatures])) {
+            showCustomAlert(`Successfully submitted a batch of ${uniqueSignatures.length} unique signatures!`);
             setTimeout(initialLoad, 3000);
         }
-    } catch(e) {
-        showCustomAlert("Failed to push votes: " + e.message);
+
+    } catch (e) {
+        if (document.getElementById('custom-alert-overlay').style.display === 'flex') {
+            document.getElementById('custom-alert-overlay').style.display = 'none';
+            isAlertShowing = false;
+            processAlertQueue();
+        }
+        const reason = e.reason || e.data?.message || e.message;
+        if (reason && reason.includes("voter already voted")) {
+             showCustomAlert("Transaction failed: The batch contained a signature from a wallet that has already voted on-chain. The API's signature list may be out of sync. Please try again later.");
+        } else {
+            showCustomAlert("Failed to push votes: " + reason);
+        }
+        console.error("Push votes error:", e);
     }
 }
+
 async function updateVoteCounterForProposal(proposalId) { const proposalDiv = document.querySelector(`.proposal[data-proposal-id='${proposalId}']`); if (!proposalDiv) return; const pushButton = proposalDiv.querySelector('.push-votes-btn'); const counterEl = proposalDiv.querySelector('.vote-counter'); if (!pushButton || !counterEl) return; try { const response = await fetch(`${API_BASE_URL}proposal/signatures/${proposalId}`); const { data: signatures = [] } = await response.json(); counterEl.textContent = signatures.length; pushButton.style.display = (signatures.length > 0) ? 'inline-block' : 'none'; } catch(e) { counterEl.textContent = "N/A"; pushButton.style.display = 'none'; } }
 async function submitProposal() {
     const investeeWallet = document.getElementById('p-investeeWallet').value.trim();
