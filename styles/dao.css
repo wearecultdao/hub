@@ -128,7 +128,7 @@ body {
 #close-reminder-btn:hover { opacity: 1; }
 .container { max-width: 70%; margin: 40px auto 120px auto; padding: 0 20px; padding-bottom: 120px; }
 @media (max-width: 768px) {
-  .container { max-width: 100%; margin: 8px auto 80px auto; padding: 0 16px; padding-bottom: 60px; }
+  .container { max-width: 98%; margin: 8px auto 80px auto; padding: 0 16px; padding-bottom: 60px; }
 }
 
 .icon-button {
@@ -193,7 +193,6 @@ p { margin-bottom: 1rem; opacity: 0.9; }
 .btn:hover:not(:disabled) { background: var(--color-text); color: var(--color-bg); border-color: var(--color-text); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* MODIFIED: Fully theme-aware secondary button style */
 .btn2 {
     background: var(--color-surface);
     color: var(--color-text);
@@ -209,7 +208,7 @@ p { margin-bottom: 1rem; opacity: 0.9; }
 }
 .btn2:hover:not(:disabled) { 
     background: var(--btn-bg);
-    border-color: var(--color-btn-bg);
+    border-color: var(--btn-bg);
     color: var(--color-text);
 }
 .btn2:disabled { opacity: 0.5; cursor: not-allowed; }
