@@ -2,7 +2,7 @@
 
 import DOMPurify from 'https://cdn.jsdelivr.net/npm/dompurify@3.0.5/+esm';
 // =========================================================================
-// app.js - Version 0.0.42.0.86 (FINAL - Final Polish & Robust Push)
+// app.js - Version 0.0.42.0.87 (FINAL - Definitive UI Polish)
 // =========================================================================
 
 // === Imports ===
@@ -714,10 +714,20 @@ async function pushAllVotesForProposal(proposalId) {
         }
         const uniqueSignatures = Array.from(uniqueSignatureMap.values());
         
+        if (uniqueSignatures.length === 0) {
+            return showCustomAlert("No valid pending signatures found to submit.");
+        }
+
         const contractWithSigner = new ethers.Contract(GOVERNOR_BRAVO_2_ADDRESS, GOVERNOR_BRAVO_2_ABI, signer);
         if (await sendTransaction(contractWithSigner, 'castVoteBySigs', [uniqueSignatures])) {
-            showCustomAlert(`Successfully submitted a batch of ${uniqueSignatures.length} unique signatures!`);
-            setTimeout(initialLoad, 3000);
+            showCustomAlert(`Successfully submitted a batch of ${uniqueSignatures.length} unique signatures! The page will now reload.`);
+            
+            const proposalDiv = document.querySelector(`.proposal[data-proposal-id='${proposalId}']`);
+            if (proposalDiv) {
+                proposalDiv.querySelector('.vote-counter').textContent = '0';
+                proposalDiv.querySelector('.push-votes-btn').style.display = 'none';
+            }
+            setTimeout(() => location.reload(), 4000);
         }
 
     } catch (e) {
@@ -728,7 +738,7 @@ async function pushAllVotesForProposal(proposalId) {
         }
         const reason = e.reason || e.data?.message || e.message;
         if (reason && reason.includes("voter already voted")) {
-             showCustomAlert("Transaction failed: The batch contained a signature from a wallet that has already voted on-chain. The API's signature list may be out of sync. Please try again later.");
+             showCustomAlert("Transaction failed: The batch contained a signature from a wallet that has already voted on-chain. The API's signature list may be out of sync.");
         } else {
             showCustomAlert("Failed to push votes: " + reason);
         }
