@@ -199,7 +199,12 @@ p { margin-bottom: 1rem; opacity: 0.9; }
     cursor: pointer; transition: all 0.2s ease-in-out;
     margin-right: 10px; border-radius: 4px;
 }
-.btn2:hover:not(:disabled) { background: var(--color-surface); color: var(--color-bg); border-color: var(--color-text); }
+/* MODIFIED: Changed hover state for better readability and consistency */
+.btn2:hover:not(:disabled) { 
+    background: var(--color-text); 
+    color: var(--color-bg); 
+    border-color: var(--color-text); 
+}
 .btn2:disabled { opacity: 0.5; cursor: not-allowed; }
 .label-line { display: flex; justify-content: space-between; align-items: baseline;  }
 
