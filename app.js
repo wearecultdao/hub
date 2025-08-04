@@ -1207,4 +1207,3 @@ document.addEventListener("DOMContentLoaded", () => {
       }, 5000);
     }, 120000); // 
   }
-});
