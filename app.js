@@ -6,7 +6,7 @@ import DOMPurify from 'https://cdn.jsdelivr.net/npm/dompurify@3.0.5/+esm';
 // =========================================================================
 
 // === Imports ===
-O ki8import {
+import {
   CULT_TOKEN_ADDRESS, DCULT_TOKEN_ADDRESS, GOVERNOR_BRAVO_ADDRESS,
   GOVERNOR_BRAVO_2_ADDRESS, GOVERNOR_BRAVO_ABI, GOVERNOR_BRAVO_2_ABI,
   DCULT_ABI, CULT_TOKEN_ABI, UNISWAP_PAIR_ADDRESS, UNISWAP_PAIR_ABI,
@@ -1207,3 +1207,4 @@ document.addEventListener("DOMContentLoaded", () => {
       }, 5000);
     }, 120000); // 
   }
+});
