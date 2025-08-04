@@ -1155,18 +1155,18 @@ window.addEventListener('DOMContentLoaded', () => {
       const themeToggleBtn = document.getElementById('theme-toggle');
       let isPublishTheme = true;
       function applyTheme(theme) {
-        if (theme === 'default') {
+        if (theme === 'publish') {
           root.style.setProperty('--background-image', 'radial-gradient(circle, #ff5252, black');
           root.style.setProperty('--btn-bg', '#333333');
           root.style.setProperty('--wallet-dropdown-bg', '#050505');
           root.style.setProperty('--ui-section-blur', 'blur(0px)');
-          root.style.setProperty('--theme-name', 'default');
+          root.style.setProperty('--theme-name', 'publish');
         } else {
           root.style.setProperty('--background-image', 'radial-gradient(circle, #222222, black)');
           root.style.setProperty('--btn-bg', '#ff5252');
           root.style.setProperty('--wallet-dropdown-bg', '#ff5252');
           root.style.setProperty('--ui-section-blur', 'blur(0px)');
-          root.style.setProperty('--theme-name', 'publish');
+          root.style.setProperty('--theme-name', 'default');
         }
       }
       themeToggleBtn.addEventListener('click', () => {
