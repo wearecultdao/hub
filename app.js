@@ -6,7 +6,7 @@ import DOMPurify from 'https://cdn.jsdelivr.net/npm/dompurify@3.0.5/+esm';
 // =========================================================================
 
 // === Imports ===
-import {
+O ki8import {
   CULT_TOKEN_ADDRESS, DCULT_TOKEN_ADDRESS, GOVERNOR_BRAVO_ADDRESS,
   GOVERNOR_BRAVO_2_ADDRESS, GOVERNOR_BRAVO_ABI, GOVERNOR_BRAVO_2_ABI,
   DCULT_ABI, CULT_TOKEN_ABI, UNISWAP_PAIR_ADDRESS, UNISWAP_PAIR_ABI,
@@ -1160,7 +1160,7 @@ window.addEventListener('DOMContentLoaded', () => {
           root.style.setProperty('--btn-bg', '#333333');
           root.style.setProperty('--wallet-dropdown-bg', '#050505');
           root.style.setProperty('--ui-section-blur', 'blur(0px)');
-          root.style.setProperty('--theme-name', 'publish');
+          root.style.setProperty('--theme-name', 'default');
         } else {
           root.style.setProperty('--background-image', 'radial-gradient(circle, #222222, black)');
           root.style.setProperty('--btn-bg', '#ff5252');
