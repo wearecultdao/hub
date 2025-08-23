@@ -1,9 +1,11 @@
-// --- START OF FINAL app.js ---
+// ============================================================
+// CULT DAO Hub — v1.0.0 — 2025-08-23
+// Developed by fl0ri0 (github.com/fl0ri0)
+// Gifted to the CULT DAO community — published under github.com/wearecultdao/hub
+// Licensed under MIT
+// ============================================================
 
 import DOMPurify from 'https://cdn.jsdelivr.net/npm/dompurify@3.0.5/+esm';
-// =========================================================================
-// app.js - Version 0.8 fl0ri0
-// =========================================================================
 
 // === Imports ===
 import {
@@ -25,7 +27,9 @@ const SUPPORTED_CURRENCIES = {
     usd: 'USD', eur: 'EUR', gbp: 'GBP', jpy: 'JPY', aud: 'AUD',
     cad: 'CAD', chf: 'CHF', btc: 'BTC', eth: 'ETH', xau: 'Gold', xag: 'Silver'
 };
-const DOMPURIFY_CONFIG = { ADD_ATTR: ['target'] };
+const DOMPURIFY_CONFIG = { ADD_ATTR: ['target', 'rel'] };
+const REMINDER_BANNER_DISMISSED_KEY = 'reminderBannerDismissedTimestamp';
+const FOURTEEN_DAYS_MS =  14 * 24 * 60 * 60 * 1000; //
 
 
 // --- Global State ---
@@ -74,7 +78,7 @@ function processAlertQueue() {
     const message = alertQueue.shift();
     const overlay = document.getElementById('custom-alert-overlay');
     const messageEl = document.getElementById('custom-alert-message');
-    messageEl.innerHTML = DOMPurify.sanitize(message, DOMPURIFY_CONFIG);
+    messageEl.innerHTML = DOMPurify.sanitize(message, { ...DOMPURIFY_CONFIG, ADD_ATTR: ['target', 'rel'] });
     overlay.style.display = 'flex';
 }
 function showCustomAlert(message) { alertQueue.push(message); processAlertQueue(); }
@@ -212,27 +216,34 @@ async function refreshAllTrackedWalletData() { await Promise.all(trackedWallets.
 async function updateGuardianThreshold() { try { const dCultContract = new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, provider); const stakerData = await dCultContract.highestStakerInPool(0, 0); const thresholdAmount = ethers.utils.formatUnits(stakerData.deposited, 18); setMetric('top50staker', formatNumber(parseFloat(thresholdAmount))); } catch (error) { console.error("Error fetching guardian threshold:", error); setMetric('top50staker', "Error"); } }
 async function updateBalances() { try { const cultContract = new ethers.Contract(CULT_TOKEN_ADDRESS, CULT_TOKEN_ABI, provider); const dCultContract = new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, provider); [userCultBalanceRaw, userDcultBalanceRaw] = await Promise.all([cultContract.balanceOf(userAddress), dCultContract.balanceOf(userAddress)]); userDCultBalance = userDcultBalanceRaw; const cultFormatted = ethers.utils.formatUnits(userCultBalanceRaw, 18); setMetric('cult-balance', formatNumber(parseFloat(cultFormatted))); setMetric('available-cult', `Available: ${cultFormatted}`); const dcultFormatted = ethers.utils.formatUnits(userDcultBalanceRaw, 18); setMetric('dcult-balance', formatNumber(parseFloat(dcultFormatted))); setMetric('available-dcult', `Available: ${dcultFormatted}`); document.getElementById('wallet-address').innerHTML = createAddressLink(userAddress); } catch (error) { console.error("Error updating balances:", error); } }
 
-function showAndFadeNotice(message) {
-    const noticeContainer = document.getElementById('top50-notice-container');
-    const noticeText = document.getElementById('top50-notice');
-    if (!noticeContainer || !noticeText) return;
+function showAndFadeNotice(message, extraClass = '') {
+  const noticeContainer = document.getElementById('top50-notice-container');
+  const noticeText = document.getElementById('top50-notice');
+  if (!noticeContainer || !noticeText) return;
 
-    if (noticeTimeout) clearTimeout(noticeTimeout);
+  if (noticeTimeout) clearTimeout(noticeTimeout);
 
-    noticeText.innerHTML = DOMPurify.sanitize(message);
-    noticeContainer.style.opacity = '1';
-    noticeContainer.style.display = 'flex';
+  noticeContainer.classList.add('eligibility-notice');
+  noticeContainer.classList.remove('limeNotice');
+  if (extraClass) noticeContainer.classList.add(extraClass);
 
+  noticeContainer.style.transition = '';
+  noticeText.innerHTML = DOMPurify.sanitize(message, { ADD_ATTR: ['target', 'rel'] });
+  noticeContainer.style.opacity = '1';
+  noticeContainer.style.display = 'flex';
+
+  if (extraClass !== 'limeNotice') {
     noticeTimeout = setTimeout(() => {
-        noticeContainer.style.transition = 'opacity 3.5s ease-out';
-        noticeContainer.style.opacity = '0';
-        setTimeout(() => {
-            if (noticeContainer.style.opacity === '0') {
-                 noticeContainer.style.display = 'none';
-                 noticeContainer.style.transition = ''; 
-            }
-        }, 5000); 
+      noticeContainer.style.transition = 'opacity 3.5s ease-out';
+      noticeContainer.style.opacity = '0';
+      setTimeout(() => {
+        if (noticeContainer.style.opacity === '0') {
+          noticeContainer.style.display = 'none';
+          noticeContainer.style.transition = '';
+        }
+      }, 5000);
     }, 180000);
+  }
 }
 
 async function updateDelegationStatus() {
@@ -256,15 +267,30 @@ async function updateDelegationStatus() {
         delegateSection.style.display = 'flex';
         noticeContainer.style.display = 'none'; 
 
+        const toBN = (x) => (x && ethers.BigNumber.isBigNumber(x)) ? x : ethers.BigNumber.from(x || 0);
+        const walletCultBN = toBN(userCultBalanceRaw);
+        const hasCultInWallet = !walletCultBN.isZero();
+        const hasStakedCult  = !userDCultBalance.isZero();
+
+        if (!hasCultInWallet && !hasStakedCult) {
+            showAndFadeNotice(
+              "No CULT yet? Join the revolution — <a href='https://app.uniswap.org/#/swap?outputCurrency=0xF0f9d895ACA5c8678f706FB8216fa22957685A13' target='_blank' rel='noopener noreferrer'>Get CULT on Uniswap</a> to get started.",
+              'limeNotice'
+            );
+            document.getElementById('reminder-banner').classList.add('limeNotice');
+        }
+
         if (isUserGuardian) {
-            showAndFadeNotice("Guardians (Top 50 Stakers) cannot delegate.");
+            showAndFadeNotice("As a Guardian, your proposal rights are automatically active. No delegation is needed.");
             delegateBtn.style.display = 'none';
             signDelegationBtn.style.display = 'none';
         } else {
             if (userDCultBalance.gt(0) && !isSelfDelegated) {
-                showAndFadeNotice("To participate in DAO votings you still need to delegate your staked Cult.");
+                showAndFadeNotice("You're one step away! Delegate your staked CULT to enable your voting power.");
             } else if (isSelfDelegated && userDCultBalance.isZero()) {
-                showAndFadeNotice("Your Delegation Status is active but you do not stake any Cult. Stake some to participate in DAO votings.");
+                showAndFadeNotice("You're so close! Stake CULT now to activate your voting rights and start earning DAO returns.");
+            } else if (hasCultInWallet && userDCultBalance.isZero()) {
+                showAndFadeNotice("The next step is to stake your CULT. This makes you eligible for DAO returns and enables voting after you delegate.");
             }
             
             if (userDCultBalance.gt(0)) {
@@ -280,6 +306,7 @@ async function updateDelegationStatus() {
         setMetric('delegation-status', "Error");
     }
 }
+
 async function checkUserRights() {
     const proposalSection = document.getElementById('submit-proposal-section');
     const notice = document.getElementById('proposal-eligibility-notice');
@@ -303,7 +330,9 @@ async function checkUserRights() {
                 rightsValueEl.textContent = "None (No dCULT)";
             }
             proposalSection.classList.add('dimmed-section');
-            notice.textContent = "Only Guardians (Top 50 Stakers) can submit proposals.";
+            const communityLink = "https://discord.gg/cultdao";
+            const message = `Only Guardians (Top 50 Stakers) can submit proposals, but in CULT, ideas can come from anyone. Find a Guardian in the <a href="${communityLink}" target="_blank" rel="noopener noreferrer">community</a> to get started. Your vision - our future.`;
+            notice.innerHTML = DOMPurify.sanitize(message, { ADD_ATTR: ['target', 'rel'] });
             notice.style.display = 'block';
         }
     } catch (error) {
@@ -524,7 +553,7 @@ async function initialLoad() {
         
         const initialProposals = await fetchProposalBatch(total, Math.max(1, total - INITIAL_PAST_PROPOSAL_COUNT + 1)); 
         allProposals = initialProposals; 
-        
+                
         const activeAndPendingProposals = allProposals.filter(p => p.state === PROPOSAL_STATES.PENDING || p.state === PROPOSAL_STATES.ACTIVE);
         const pastProposals = allProposals.filter(p => p.state !== PROPOSAL_STATES.PENDING && p.state !== PROPOSAL_STATES.ACTIVE).sort((a, b) => b.id - a.id);
 
@@ -547,7 +576,9 @@ async function initialLoad() {
         await loadAllProposalsInBackground(total - allProposals.length); 
 
     } catch (e) { 
-        console.error("Could not load proposals:", e); 
+        console.error("Could not load proposals:", e);
+        document.getElementById('active-proposal-list').innerHTML = '<p>Could not connect to the network to load active proposals.</p>';
+        document.getElementById('past-proposal-list').innerHTML = '<p>Network error: Could not load past proposals.</p>';
     } 
 }
 
@@ -1044,7 +1075,12 @@ window.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('disclaimerAccepted', 'true'); 
         document.getElementById('disclaimer-overlay').style.display = 'none'; 
     });
-    safeAddEventListener('close-reminder-btn', 'click', () => { document.getElementById('reminder-banner').style.display = 'none'; });
+
+    safeAddEventListener('close-reminder-btn', 'click', () => {
+        const banner = document.getElementById('reminder-banner');
+        banner.style.display = 'none';
+        localStorage.setItem(REMINDER_BANNER_DISMISSED_KEY, Date.now().toString());
+    });
     
     safeAddEventListener('close-top50-notice-btn', 'click', () => {
         const noticeContainer = document.getElementById('top50-notice-container');
@@ -1057,7 +1093,10 @@ window.addEventListener('DOMContentLoaded', () => {
         disclaimerOverlay.style.display = 'flex';
     } else {
         const reminderBanner = document.getElementById('reminder-banner');
-        if (reminderBanner) reminderBanner.style.display = 'flex';
+        const dismissedTimestamp = localStorage.getItem(REMINDER_BANNER_DISMISSED_KEY);
+        if (reminderBanner && (!dismissedTimestamp || (Date.now() - parseInt(dismissedTimestamp, 10)) > FOURTEEN_DAYS_MS)) {
+            reminderBanner.style.display = 'flex';
+        }
     }
 
     safeAddEventListener('connect-wallet-btn', 'click', () => {
@@ -1151,48 +1190,87 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 window.addEventListener('DOMContentLoaded', () => {
-  const root = document.documentElement;
-      const themeToggleBtn = document.getElementById('theme-toggle');
-      let isPublishTheme = true;
-      function applyTheme(theme) {
-        if (theme === 'publish') {
-          root.style.setProperty('--background-image', 'radial-gradient(circle, #ff5252, black');
-          root.style.setProperty('--btn-bg', '#333333');
-          root.style.setProperty('--wallet-dropdown-bg', '#050505');
-          root.style.setProperty('--ui-section-blur', 'blur(0px)');
-          root.style.setProperty('--theme-name', 'publish');
-        } else {
-          root.style.setProperty('--background-image', 'radial-gradient(circle, #222222, black)');
-          root.style.setProperty('--btn-bg', '#ff5252');
-          root.style.setProperty('--wallet-dropdown-bg', '#ff5252');
-          root.style.setProperty('--ui-section-blur', 'blur(0px)');
-          root.style.setProperty('--theme-name', 'default');
+    const root = document.documentElement;
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    const shuffleBtn = document.getElementById('shuffle-theme-btn');
+    const THEME_STORAGE_KEY = 'cultDaoThemeSettings'; 
+
+    let isPublishTheme = false; 
+
+    function applyTheme(themeName) {
+        if (themeName === 'publish') {
+            root.style.setProperty('--background-image', 'radial-gradient(circle, #ff5252, black)');
+            root.style.setProperty('--btn-bg', '#333333');
+            root.style.setProperty('--wallet-dropdown-bg', '#050505');
+            root.style.setProperty('--ui-section-blur', 'blur(0px)');
+            root.style.setProperty('--theme-name', 'publish');
+        } else { 
+            root.style.setProperty('--background-image', 'radial-gradient(circle, #222222, black)');
+            root.style.setProperty('--btn-bg', '#ff5252');
+            root.style.setProperty('--wallet-dropdown-bg', '#ff5252');
+            root.style.setProperty('--ui-section-blur', 'blur(0px)');
+            root.style.setProperty('--theme-name', 'default');
         }
-      }
-      themeToggleBtn.addEventListener('click', () => {
+    }
+
+
+    themeToggleBtn.addEventListener('click', () => {
         isPublishTheme = !isPublishTheme;
-        applyTheme(isPublishTheme ? 'publish' : 'default');
-      });
-      applyTheme('publish');
-      const shuffleBtn = document.getElementById('shuffle-theme-btn');
-      function getRandomColor() {
+        const newThemeName = isPublishTheme ? 'publish' : 'default';
+        applyTheme(newThemeName);
+
+        const themeToSave = { type: 'standard', name: newThemeName };
+        localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(themeToSave));
+    });
+
+    shuffleBtn.addEventListener('click', () => {
         const letters = '0123456789ABCDEF';
-        let color = '#';
-        for (let i = 0; i < 6; i++) {
-          color += letters[Math.floor(Math.random() * 14.2069)];
-        }
-        return color;
-      }
-      shuffleBtn.addEventListener('click', () => {
+        const getRandomColor = () => {
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        };
+
         const color1 = getRandomColor();
         const color2 = getRandomColor();
         const btnColor = getRandomColor();
         const surfaceColor = 'var(--color-details)';
+        
         root.style.setProperty('--background-image', `radial-gradient(circle, ${color1}, ${color2})`);
         root.style.setProperty('--btn-bg', btnColor);
         root.style.setProperty('--wallet-dropdown-bg', surfaceColor);
         root.style.setProperty('--ui-section-blur', 'blur(0px)');
-      });
+
+        const themeToSave = { type: 'random', colors: { color1, color2, btnColor } };
+        localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(themeToSave));
+    });
+
+    function loadAndApplySavedTheme() {
+        const savedThemeJSON = localStorage.getItem(THEME_STORAGE_KEY);
+
+        if (savedThemeJSON) {
+            const savedTheme = JSON.parse(savedThemeJSON);
+
+            if (savedTheme.type === 'standard') {
+                applyTheme(savedTheme.name);
+                isPublishTheme = (savedTheme.name === 'publish'); 
+            } else if (savedTheme.type === 'random') {
+                const { color1, color2, btnColor } = savedTheme.colors;
+                root.style.setProperty('--background-image', `radial-gradient(circle, ${color1}, ${color2})`);
+                root.style.setProperty('--btn-bg', btnColor);
+                root.style.setProperty('--wallet-dropdown-bg', 'var(--color-details)');
+                root.style.setProperty('--ui-section-blur', 'blur(0px)');
+            }
+
+        } else {
+            applyTheme('default');
+            isPublishTheme = false;
+        }
+    }
+
+    loadAndApplySavedTheme(); 
 });
 document.addEventListener("DOMContentLoaded", () => {
   const banner = document.getElementById("reminder-banner");

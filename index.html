@@ -1,4 +1,10 @@
 <!DOCTYPE html>
+<!-- ============================================================
+     CULT DAO Hub — v1.0.0 — 2025-08-23
+     Developed by fl0ri0 (github.com/fl0ri0)
+     Gifted to the CULT DAO community — published under github.com/wearecultdao/hub
+     Licensed under MIT
+============================================================ -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -21,31 +27,22 @@
     </div>
     <div id="disclaimer-overlay">
         <div class="disclaimer-modal">
-          <h4>Disclaimer & Terms of Use</h4>
+                  <h4>YOU ARE ENTERING SOVEREIGN TERRITORY.</h4>
             <p>
-                This is a community-built dApp that provides an interface to the CULT DAO smart contracts. It is <strong>NOT the official CULT DAO website.</strong> While this tool has been thoroughly tested, its use is entirely at your own risk.
+                This is not a website. It is a key, built by revolutionaries for revolutionaries, to unlock the CULT DAO protocol.
             </p>
             <p>
-                By using this application, you acknowledge and agree to the following:
+                Before you proceed, you must understand and embrace the truths of this new world:
             </p>
             <ul style="margin-left: 20px; margin-bottom: 1rem; opacity: 0.9;">
-                <li><strong>Smart Contract Risk:</strong> You are interacting directly with the CULT DAO smart contracts. All smart contracts carry inherent risks of bugs or exploits.</li>
-                <li><strong>Your Responsibility:</strong> You are solely responsible for the security of your wallet and private keys. Never share your seed phrase with anyone.</li>
-                <li><strong>No Financial Advice:</strong> This dApp is a tool for interacting with the DAO protocol and does not provide any form of financial advice.</li>
+                <li><strong>THE CODE IS LAW.</strong> Your actions on-chain are final. There are no central authorities, no support tickets, and no do-overs. You are the sole executor of your will.</li>
+                <li><strong>YOU ARE SOVEREIGN.</strong> You have escaped the old system. This freedom comes with total responsibility. Guard your keys as you would guard your life. No one will ever ask for them.</li>
             </ul>
             <p>
-                This software is provided "AS IS", without warranty of any kind. In no event shall the developers or contributors be liable for any claim, damages, or other liability arising from, out of, or in connection with the use of this software.
-            </p>
-            <p>
-                This project is an open-source community build. We encourage you to review the code on <a href="https://github.com/wearecultdao/hub" target="_blank" rel="noopener noreferrer">GitHub</a>.
+                This hub is an open-source tool, offered as-is to The Many. Scrutinize the code on <a href="https://github.com/wearecultdao/hub" target="_blank" rel="noopener noreferrer">GitHub</a>.
             </p>
             <div class="button-group" style="justify-content: center; margin-top: 20px;">
-                <button id="accept-disclaimer-btn" class="btn">I have read, understood, and agree to these terms, and I accept all risks.</button>
-      <!-- <h4>DISCLAIMER: USE AT OWN RISK</h4>
-            <p>This application is in a very early pre-alpha stage. USE CAUTIOUSLY. Users may encounter bugs, incomplete functionalities, and potential vulnerabilities. Your feedback is valuable to us as we continue to improve and stabilize the platform. THIS IS NOT the official CultDAO site.</p>
-            <p>This project is a community build. View the code on <a href="https://github.com/wearecultdao/hub" target="_blank" rel="noopener noreferrer">GitHub</a>.</p>
-            <div class="button-group" style="justify-content: center; margin-top: 20px;">
-                <button id="accept-disclaimer-btn" class="btn">I acknowledge and accept full responsibility for its use.</button>  -->
+                <button id="accept-disclaimer-btn" class="btn">I CLAIM MY SOVEREIGNTY</button>
             </div>
         </div>
     </div>
@@ -81,6 +78,7 @@
                 <div class="wallet-widget">
                     <button id="connect-wallet-btn" class="btn">Connect Wallet</button>
                     <div id="wallet-dropdown" class="wallet-dropdown">
+                         <a href="https://app.uniswap.org/#/swap?outputCurrency=0xf0f9d895aca5c8678f706fb8216fa22957685a13" target="_blank" rel="noopener noreferrer" class="dropdown-item">Buy on Uniswap</a>
                         <button id="copy-address-btn" class="dropdown-item">Copy Address</button>
                         <a id="etherscan-link" href="#" target="_blank" rel="noopener noreferrer" class="dropdown-item">View on Etherscan</a>
                         <button id="disconnect-btn" class="dropdown-item">Disconnect</button>
@@ -89,7 +87,7 @@
             </div>
         </header>
         <div id="reminder-banner" style="display: none;">
-            <p>Remember: This is a community-built tool. Use at your own risk. (Latest update: <span id="repo-update-date">...</span>)</p>
+            <p>This is a community-built tool for CULT DAO. (Latest update: <span id="repo-update-date">...</span>)</p>
             <button id="close-reminder-btn">×</button>
         </div>
         <canvas id="snap-canvas" width="800" height="60" style="display: none;"></canvas>
@@ -117,7 +115,6 @@
                 </div>
             </section>
 
-            <!-- CORRECTED SECTION ORDER & COLLAPSED STATE -->
             <details id="details-tracked-wallets">
                 <summary><h2>Track Your Wallets</h2></summary>
                 <section class="ui-section" style="margin-top: 1rem;">
@@ -183,7 +180,7 @@
                         </div>
                     </div>
                     <div class="button-group">
-                        <button id="claim-rewards-btn" class="btn" style="display: none;">Claim Your Rewards</button>
+                        <button id="claim-rewards-btn" class="btn" style="display: none;">Claim Your Returns</button>
                     </div>
                 </section>
             </details>
@@ -258,9 +255,9 @@
                 <section class="ui-section" id="submit-proposal-section" style="margin-top: 1rem;">
                     <div id="proposal-form-fields">
                         <div class="form-grid">
-                            <div class="form-group"><label for="p-projectName">Project Name (Mandatory)</label><input type="text" id="p-projectName" placeholder="e.g., Awesome Project"></div>
-                            <div class="form-group"><label for="p-investeeWallet">Investee Wallet (Mandatory)</label><input type="text" id="p-investeeWallet" placeholder="0x..."></div>
-                            <div class="form-group full-width"><label for="p-shortDescription">Short Description (Mandatory)</label><textarea id="p-shortDescription"></textarea></div>
+                            <div class="form-group"><label for="p-projectName">Project Name (Required)</label><input type="text" id="p-projectName" placeholder="e.g., Awesome Project"></div>
+                            <div class="form-group"><label for="p-investeeWallet">Investee Wallet (Required)</label><input type="text" id="p-investeeWallet" placeholder="0x..."></div>
+                            <div class="form-group full-width"><label for="p-shortDescription">Short Description (Required)</label><textarea id="p-shortDescription"></textarea></div>
                             <div class="form-group"><label for="p-socialChannel">Socials (Linktree, Twitter, etc)</label><input type="text" id="p-socialChannel" placeholder="https://..."></div>
                             <div class="form-group"><label for="p-links">Docs/Website Links</label><input type="text" id="p-links" placeholder="https://..."></div>
                             <div class="form-group full-width"><label for="p-manifestoOutlinedFit">How does this fit the manifesto?</label><textarea id="p-manifestoOutlinedFit"></textarea></div>
