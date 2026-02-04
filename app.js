@@ -600,19 +600,22 @@ async function loadAllProposalsInBackground(startingId) {
 async function fetchProposalBatch(startId, endId) { const governorContract = new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, provider); const promises = []; const events = await governorContract.queryFilter(governorContract.filters.ProposalCreated(), 0, 'latest'); const descriptionMap = new Map(events.map(e => [e.args.id.toString(), e.args.description])); for (let i = startId; i >= endId && i > 0; i--) { promises.push((async () => { try { const pData = await governorContract.proposals(i); if (pData.proposer === '0x0000000000000000000000000000000000000000') return null; const state = await governorContract.state(i); const actions = await governorContract.getActions(i); const description = descriptionMap.get(i.toString()) || "Description not found."; return { ...pData, id: i, state, actions, description }; } catch (err) { return null; } })()); } const results = await Promise.all(promises); return results.filter(p => p !== null); }
 function displayMoreProposals() { 
     displayedPastProposalsCount += LOAD_MORE_BATCH_SIZE; 
-    const pastProposals = allProposals.filter(p => p.state !== PROPOSAL_STATES.PENDING && p.state !== PROPOSAL_STATES.ACTIVE).sort((a, b) => b.id - a.id);
-    renderProposals(pastProposals.slice(0, displayedPastProposalsCount), document.getElementById('past-proposal-list'), { isActiveList: false });
-    document.getElementById('load-more-btn').style.display = pastProposals.length > displayedPastProposalsCount ? 'block' : 'none';
+    refreshPastProposalView();
 }
 function refreshPastProposalView() { 
     const searchTerm = document.getElementById('search-proposals').value.toLowerCase(); 
     const showExecuted = document.getElementById('filter-executed').checked; 
     const showDefeated = document.getElementById('filter-defeated').checked; 
     const hideCancelled = document.getElementById('filter-hide-cancelled').checked; 
+    const loadMoreBtn = document.getElementById('load-more-btn');
     let pastProposals = allProposals.filter(p => p.state !== PROPOSAL_STATES.PENDING && p.state !== PROPOSAL_STATES.ACTIVE).sort((a, b) => b.id - a.id);
     if (hideCancelled) pastProposals = pastProposals.filter(p => p.state !== PROPOSAL_STATES.CANCELED); if (searchTerm) pastProposals = pastProposals.filter(p => p.id.toString().includes(searchTerm) || p.proposer.toLowerCase().includes(searchTerm) || p.description.toLowerCase().includes(searchTerm)); if (showExecuted) pastProposals = pastProposals.filter(p => p.state === PROPOSAL_STATES.EXECUTED); else if (showDefeated) pastProposals = pastProposals.filter(p => p.state === PROPOSAL_STATES.DEFEATED); 
     const proposalsToDisplay = pastProposals.slice(0, displayedPastProposalsCount); renderProposals(proposalsToDisplay, document.getElementById('past-proposal-list'), { isActiveList: false, searchTerm }); 
-    document.getElementById('load-more-btn').style.display = proposalsToDisplay.length < pastProposals.length ? 'block' : 'none'; 
+    const isFiltered = !!searchTerm || showExecuted || showDefeated || hideCancelled;
+    if (loadMoreBtn) {
+        loadMoreBtn.textContent = isFiltered ? 'Load More' : 'Load Older Proposals';
+        loadMoreBtn.style.display = proposalsToDisplay.length < pastProposals.length ? 'block' : 'none';
+    }
 }
 function getProposalActionsHtml(proposal) {
     let buttonsHtml = '';
