@@ -19,6 +19,10 @@ import {
 const ETH_TO_BURN_PER_PROPOSAL = 2.5;
 const ETH_TO_FUND_PER_PROPOSAL = 13;
 const API_BASE_URL = "https://api.cultdao.io/";
+const BATCH_API_HEALTHCHECK_TIMEOUT_MS = 4500;
+const BATCH_API_UNAVAILABLE_MESSAGE = "Gasless signatures are only available through the official CULT frontend at the moment. Direct on-chain delegation and CULT Governor voting still work.";
+const NOTICE_AUTOHIDE_MS = 180000;
+const NOTICE_FADE_MS = 3500;
 const INITIAL_PAST_PROPOSAL_COUNT = 10;
 const LOAD_MORE_BATCH_SIZE = 50;
 const PROPOSAL_STATES = { PENDING: 0, ACTIVE: 1, CANCELED: 2, DEFEATED: 3, SUCCEEDED: 4, QUEUED: 5, EXPIRED: 6, EXECUTED: 7 };
@@ -41,6 +45,7 @@ let canceledSet = new Set();
 let displayedPastProposalsCount = INITIAL_PAST_PROPOSAL_COUNT;
 let executionTxMap = new Map();
 let fundingTxMap = new Map();
+let fallbackFundingTxByRecipient = new Map();
 let activeTimers = {};
 let averageBlockTime = 12;
 let trackedWallets = [];
@@ -52,7 +57,11 @@ let alertQueue = [];
 let isAlertShowing = false;
 let isUserGuardian = false;
 let noticeTimeout;
+let batchApiNoticeTimeouts = new WeakMap();
 let openProposalsState = new Set(); 
+let batchApiAvailable = null;
+let batchApiUnavailableReason = '';
+let batchApiHealthCheckPromise = null;
 
 // --- DOM Elements ---
 const connectBtn = document.getElementById('connect-wallet-btn');
@@ -83,6 +92,163 @@ function processAlertQueue() {
 }
 function showCustomAlert(message) { alertQueue.push(message); processAlertQueue(); }
 function setMetric(id, value) { const el = document.getElementById(id); if (el) el.textContent = value; }
+function isBatchApiAvailable() { return batchApiAvailable === true; }
+function getBatchApiNoticeContent() {
+    return `<span>${BATCH_API_UNAVAILABLE_MESSAGE}</span><button type="button" class="batch-api-close-btn notice-close-btn" aria-label="Dismiss notice">×</button>`;
+}
+function getBatchApiNoticeHtml() {
+    return `<div class="batch-api-notice proposal-batch-api-notice is-visible">${getBatchApiNoticeContent()}</div>`;
+}
+function hideBatchApiNotice(notice, fade = false) {
+    if (!notice) return;
+    const timeoutId = batchApiNoticeTimeouts.get(notice);
+    if (timeoutId) {
+        clearTimeout(timeoutId);
+        batchApiNoticeTimeouts.delete(notice);
+    }
+
+    if (fade) {
+        notice.style.transition = `opacity ${NOTICE_FADE_MS / 1000}s ease-out`;
+        notice.style.opacity = '0';
+        setTimeout(() => {
+            if (notice.style.opacity === '0') {
+                notice.classList.remove('is-visible');
+                notice.style.display = 'none';
+                notice.style.transition = '';
+            }
+        }, NOTICE_FADE_MS + 1500);
+        return;
+    }
+
+    notice.classList.remove('is-visible');
+    notice.style.display = 'none';
+    notice.style.transition = '';
+    notice.style.opacity = '1';
+}
+function showBatchApiNotice(notice) {
+    if (!notice) return;
+    const existingTimeout = batchApiNoticeTimeouts.get(notice);
+    if (existingTimeout) clearTimeout(existingTimeout);
+
+    notice.innerHTML = getBatchApiNoticeContent();
+    notice.style.transition = '';
+    notice.style.opacity = '1';
+    notice.style.display = 'flex';
+    notice.classList.add('is-visible');
+
+    const timeoutId = setTimeout(() => hideBatchApiNotice(notice, true), NOTICE_AUTOHIDE_MS);
+    batchApiNoticeTimeouts.set(notice, timeoutId);
+}
+function showVisibleBatchApiNotices() {
+    document.querySelectorAll('.batch-api-notice').forEach(showBatchApiNotice);
+}
+function getBatchApiErrorReason(error) {
+    if (error?.name === 'AbortError') return 'Timed out';
+    return error?.message || 'Fetch failed';
+}
+function isBatchApiTransportError(error) {
+    const message = error?.message || '';
+    return error?.name === 'AbortError' || message === 'Failed to fetch' || message.includes('NetworkError');
+}
+async function parseApiJson(response) {
+    try {
+        const payload = await response.json();
+        if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('Bad API response');
+        return payload;
+    } catch (error) {
+        throw new Error('Bad API response');
+    }
+}
+function getCounterFromPayload(payload) {
+    const count = Number(payload?.data);
+    return Number.isFinite(count) && count >= 0 ? count : null;
+}
+function setDelegationCounter(count) {
+    const pushButton = document.getElementById('push-delegates-btn');
+    const safeCount = Number.isFinite(Number(count)) ? Number(count) : 0;
+    setMetric('delegate-counter', safeCount);
+    if (pushButton) {
+        pushButton.disabled = false;
+        pushButton.style.display = isBatchApiAvailable() && safeCount > 0 ? 'inline-block' : 'none';
+    }
+}
+function applyBatchApiAvailabilityToUi() {
+    const available = isBatchApiAvailable();
+    const delegationNotice = document.getElementById('delegation-batch-api-notice');
+
+    if (!available) {
+        showBatchApiNotice(delegationNotice);
+        const signDelegationBtn = document.getElementById('sign-delegation-btn');
+        const pushDelegatesBtn = document.getElementById('push-delegates-btn');
+        if (signDelegationBtn) signDelegationBtn.style.display = 'none';
+        if (pushDelegatesBtn) {
+            pushDelegatesBtn.disabled = true;
+            pushDelegatesBtn.style.display = 'none';
+        }
+        setMetric('delegate-counter', 'N/A');
+        document.querySelectorAll('.vote-for-sig-btn, .vote-against-sig-btn, .push-votes-btn').forEach(button => {
+            button.disabled = true;
+            button.style.display = 'none';
+        });
+    } else {
+        document.querySelectorAll('.batch-api-notice').forEach(notice => hideBatchApiNotice(notice));
+        document.querySelectorAll('.vote-for-sig-btn, .vote-against-sig-btn, .push-votes-btn').forEach(button => {
+            button.disabled = false;
+        });
+    }
+}
+function markBatchApiUnavailable(reason = '') {
+    batchApiAvailable = false;
+    batchApiUnavailableReason = reason;
+    applyBatchApiAvailabilityToUi();
+}
+async function checkBatchApiHealth() {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), BATCH_API_HEALTHCHECK_TIMEOUT_MS);
+
+    try {
+        const response = await fetch(`${API_BASE_URL}delegate/counter`, { signal: controller.signal, cache: 'no-store' });
+        if (!response.ok) return { available: false, reason: `HTTP ${response.status}` };
+
+        const payload = await parseApiJson(response);
+        const delegateCounter = getCounterFromPayload(payload);
+        if (delegateCounter === null) return { available: false, reason: 'Bad API response' };
+
+        return { available: true, reason: '', delegateCounter };
+    } catch (error) {
+        return { available: false, reason: getBatchApiErrorReason(error) };
+    } finally {
+        clearTimeout(timeoutId);
+    }
+}
+async function refreshBatchApiAvailability({ force = false } = {}) {
+    if (batchApiHealthCheckPromise && !force) return batchApiHealthCheckPromise;
+
+    batchApiHealthCheckPromise = checkBatchApiHealth()
+        .then(status => {
+            batchApiAvailable = status.available;
+            batchApiUnavailableReason = status.available ? '' : status.reason;
+            applyBatchApiAvailabilityToUi();
+            if (status.available && typeof status.delegateCounter === 'number') {
+                setDelegationCounter(status.delegateCounter);
+            }
+            return status;
+        })
+        .finally(() => {
+            batchApiHealthCheckPromise = null;
+        });
+
+    return batchApiHealthCheckPromise;
+}
+async function ensureBatchApiAvailable() {
+    if (isBatchApiAvailable()) return true;
+    if (batchApiAvailable === null) await refreshBatchApiAvailability();
+    if (isBatchApiAvailable()) return true;
+
+    applyBatchApiAvailabilityToUi();
+    showCustomAlert(BATCH_API_UNAVAILABLE_MESSAGE);
+    return false;
+}
 function formatCurrency(value, currencyCode = 'usd') { return new Intl.NumberFormat(undefined, { style: 'currency', currency: currencyCode.toUpperCase(), minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value); }
 function formatNumber(num, digits = 2) { return Number(num).toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }); }
 function formatBigNumber(numberBN) { return parseFloat(ethers.utils.formatUnits(numberBN, 18)).toLocaleString(undefined, { maximumFractionDigits: 0 }); }
@@ -168,6 +334,7 @@ function copyUserAddressToClipboard() { if (userAddress) { copyTextToClipboard(u
 
 async function initializeApp() { 
     if (!signer) return; 
+    const batchApiStatus = await refreshBatchApiAvailability({ force: true });
     const savedCurrency = localStorage.getItem('preferredCurrency');
     const browserCurrency = (Intl.NumberFormat().resolvedOptions().currency || 'usd').toLowerCase();
     preferredCurrency = savedCurrency || (Object.keys(SUPPORTED_CURRENCIES).includes(browserCurrency) ? browserCurrency : 'usd');
@@ -177,7 +344,12 @@ async function initializeApp() {
     averageBlockTime = await calculateAverageBlockTime();
     loadTrackedWallets();
     await updateBalances();
-    await Promise.all([updateDelegationStatus(), updateClaimableRewards(), updateDelegationCounter()]);
+    await Promise.all([updateDelegationStatus(), updateClaimableRewards()]);
+    if (batchApiStatus.available) {
+        setDelegationCounter(batchApiStatus.delegateCounter);
+    } else {
+        applyBatchApiAvailabilityToUi();
+    }
     await initialLoad(); 
     await Promise.all([ updateGuardianThreshold(), checkUserRights() ]);
     await refreshAllTrackedWalletData();
@@ -232,17 +404,17 @@ function showAndFadeNotice(message, extraClass = '') {
   noticeContainer.style.opacity = '1';
   noticeContainer.style.display = 'flex';
 
-  if (extraClass !== 'limeNotice') {
+    if (extraClass !== 'limeNotice') {
     noticeTimeout = setTimeout(() => {
-      noticeContainer.style.transition = 'opacity 3.5s ease-out';
+      noticeContainer.style.transition = `opacity ${NOTICE_FADE_MS / 1000}s ease-out`;
       noticeContainer.style.opacity = '0';
       setTimeout(() => {
         if (noticeContainer.style.opacity === '0') {
           noticeContainer.style.display = 'none';
           noticeContainer.style.transition = '';
         }
-      }, 5000);
-    }, 180000);
+      }, NOTICE_FADE_MS + 1500);
+    }, NOTICE_AUTOHIDE_MS);
   }
 }
 
@@ -293,14 +465,10 @@ async function updateDelegationStatus() {
                 showAndFadeNotice("The next step is to stake your CULT. This makes you eligible for DAO returns and enables voting after you delegate.");
             }
             
-            if (userDCultBalance.gt(0)) {
-                delegateBtn.style.display = 'inline-block';
-                signDelegationBtn.style.display = 'inline-block';
-            } else {
-                delegateBtn.style.display = 'none';
-                signDelegationBtn.style.display = 'none';
-            }
+            delegateBtn.style.display = 'inline-block';
+            signDelegationBtn.style.display = (userDCultBalance.gt(0) && isBatchApiAvailable()) ? 'inline-block' : 'none';
         }
+        applyBatchApiAvailabilityToUi();
     } catch (error) {
         console.error("Error fetching delegation status:", error);
         setMetric('delegation-status', "Error");
@@ -344,7 +512,47 @@ async function checkUserRights() {
     }
 }
 async function updateClaimableRewards() { try { const claimBtn = document.getElementById('claim-rewards-btn'); const dCultContract = new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, provider); if (userDCultBalance.isZero()) { setMetric('claimable-rewards', "0.00"); claimBtn.style.display = 'none'; return; } const pendingRewardsRaw = await dCultContract.pendingCULT(0, userAddress); userPendingRewardsRaw = pendingRewardsRaw; setMetric('claimable-rewards', formatNumber(parseFloat(ethers.utils.formatUnits(pendingRewardsRaw, 18)))); claimBtn.style.display = pendingRewardsRaw.gt(0) ? 'inline-block' : 'none'; } catch (error) { console.error("Error fetching claimable rewards:", error); setMetric('claimable-rewards', "Error"); } }
-async function updateDelegationCounter() { try { const response = await fetch(`${API_BASE_URL}delegate/counter`); const { data: count = 0 } = await response.json(); setMetric('delegate-counter', count); document.getElementById('push-delegates-btn').style.display = (count > 0) ? 'inline-block' : 'none'; } catch(e) { console.error("Could not fetch delegate counter:", e); setMetric('delegate-counter', "N/A"); document.getElementById('push-delegates-btn').style.display = 'none'; } }
+async function updateDelegationCounter() {
+    if (!isBatchApiAvailable()) {
+        applyBatchApiAvailabilityToUi();
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}delegate/counter`, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const payload = await parseApiJson(response);
+        const count = getCounterFromPayload(payload);
+        if (count === null) throw new Error('Bad API response');
+        setDelegationCounter(count);
+    } catch (error) {
+        markBatchApiUnavailable(getBatchApiErrorReason(error));
+    }
+}
+
+function getInvesteeWalletFromProposal(proposal) {
+    try {
+        const data = JSON.parse(proposal.description);
+        const investeeWallet = data.wallet || data.investeeWallet;
+        return investeeWallet && ethers.utils.isAddress(investeeWallet) ? investeeWallet.toLowerCase() : null;
+    } catch (error) {
+        return null;
+    }
+}
+
+function getFallbackFundingTxHash(proposal, investeeWallet) {
+    if (!investeeWallet || !ethers.utils.isAddress(investeeWallet)) return undefined;
+    const recipient = investeeWallet.toLowerCase();
+    const fundingHashes = fallbackFundingTxByRecipient.get(recipient) || [];
+    if (fundingHashes.length === 0) return undefined;
+
+    const proposalIdsForRecipient = allProposals
+        .filter(p => getInvesteeWalletFromProposal(p) === recipient)
+        .map(p => Number(p.id))
+        .sort((a, b) => b - a);
+    const proposalIndex = proposalIdsForRecipient.indexOf(Number(proposal.id));
+    return proposalIndex >= 0 ? fundingHashes[proposalIndex] : undefined;
+}
 
 // --- CURRENCY & METRICS ---
 async function fetchUniswapPoolData(provider) { const pair = new ethers.Contract(UNISWAP_PAIR_ADDRESS, UNISWAP_PAIR_ABI, provider); const token0 = await pair.token0(); const [reserve0, reserve1] = await pair.getReserves(); const isCultToken0 = token0.toLowerCase() === CULT_TOKEN_ADDRESS.toLowerCase(); const cultReserve = isCultToken0 ? reserve0 : reserve1; const ethReserve = isCultToken0 ? reserve1 : reserve0; const cultFormatted = parseFloat(ethers.utils.formatUnits(cultReserve, 18)); const ethFormatted = parseFloat(ethers.utils.formatUnits(ethReserve, 18)); const price = ethFormatted > 0 ? ethFormatted / cultFormatted : 0; return { cultInLP: cultFormatted, ethInLP: ethFormatted, price }; }
@@ -541,14 +749,28 @@ async function initialLoad() {
     try { 
         const proposalCount = await governorContract.proposalCount(); 
         const total = proposalCount.toNumber(); 
-        const [executedEvents, treasuryDisbursements, canceledEvents] = await Promise.all([ 
+        const [executedEvents, investeeFundedEvents, treasuryDisbursements, canceledEvents] = await Promise.all([ 
             governorContract.queryFilter(governorContract.filters.ProposalExecuted(), 0, 'latest'), 
+            governorContract.queryFilter(governorContract.filters.InvesteeFunded(), 0, 'latest'), 
             cultContract.queryFilter(cultContract.filters.Transfer(TREASURY_ADDRESS, null), 0, 'latest'), 
             governorContract.queryFilter(governorContract.filters.ProposalCanceled(), 0, 'latest') 
         ]); 
-        executionTxMap = new Map(executedEvents.filter(e => e.args).map(e => [e.args.id.toString(), e.transactionHash])); 
-        fundingTxMap = new Map(); 
-        treasuryDisbursements.forEach(event => { if (event.args.to.toLowerCase() !== DEAD_WALLET_1.toLowerCase()) fundingTxMap.set(event.args.to.toLowerCase(), event.transactionHash); }); 
+        executionTxMap = new Map(executedEvents.filter(e => e.args).map(e => [e.args.id.toString(), e.transactionHash]));
+        const executedProposalIdByTxHash = new Map(executedEvents.filter(e => e.args).map(e => [e.transactionHash, e.args.id.toString()])); 
+        fundingTxMap = new Map(investeeFundedEvents.filter(e => e.args).map(e => [e.args.id.toString(), e.transactionHash]));
+        fallbackFundingTxByRecipient = new Map(); 
+        treasuryDisbursements
+            .filter(event => event.args?.to && event.args.to.toLowerCase() !== DEAD_WALLET_1.toLowerCase())
+            .sort((a, b) => (b.blockNumber - a.blockNumber) || ((b.transactionIndex || 0) - (a.transactionIndex || 0)) || ((b.logIndex || 0) - (a.logIndex || 0)))
+            .forEach(event => {
+                const proposalId = executedProposalIdByTxHash.get(event.transactionHash);
+                if (proposalId && !fundingTxMap.has(proposalId)) fundingTxMap.set(proposalId, event.transactionHash);
+
+                const recipient = event.args.to.toLowerCase();
+                if (!fallbackFundingTxByRecipient.has(recipient)) fallbackFundingTxByRecipient.set(recipient, []);
+                const recipientFundingHashes = fallbackFundingTxByRecipient.get(recipient);
+                if (!recipientFundingHashes.includes(event.transactionHash)) recipientFundingHashes.push(event.transactionHash);
+            }); 
         canceledSet = new Set(canceledEvents.filter(e => e.args).map(e => e.args.id.toString()));
         
         const initialProposals = await fetchProposalBatch(total, Math.max(1, total - INITIAL_PAST_PROPOSAL_COUNT + 1)); 
@@ -561,12 +783,12 @@ async function initialLoad() {
         renderProposals(pastProposals.slice(0, displayedPastProposalsCount), document.getElementById('past-proposal-list'), { isActiveList: false });
         document.getElementById('load-more-btn').style.display = pastProposals.length > displayedPastProposalsCount ? 'block' : 'none';
 
-        activeAndPendingProposals.forEach(proposal => { 
+        for (const proposal of activeAndPendingProposals) { 
             if (proposal.state === PROPOSAL_STATES.ACTIVE) {
                 startProposalTimer(proposal.id, proposal.endBlock.toNumber()); 
             }
-            updateVoteCounterForProposal(proposal.id); 
-        }); 
+            if (isBatchApiAvailable()) await updateVoteCounterForProposal(proposal.id); 
+        }
         
         if (await fetchOnChainAndPriceData()) { 
             renderStaticMetrics(); 
@@ -620,17 +842,26 @@ function refreshPastProposalView() {
 function getProposalActionsHtml(proposal) {
     let buttonsHtml = '';
     const canVote = userDCultBalance.gt(0);
+    const batchApiReady = isBatchApiAvailable();
 
     if (proposal.state === PROPOSAL_STATES.ACTIVE) {
         if (canVote) {
              buttonsHtml += `
                 <button class="btn2 vote-for-btn">Approve</button>
                 <button class="btn2 vote-against-btn">Reject</button>
-                <button class="btn2 vote-for-sig-btn" style="border-style:dashed;">Approve (Sig)</button>
-                <button class="btn2 vote-against-sig-btn" style="border-style:dashed;">Reject (Sig)</button>
             `;
+            if (batchApiReady) {
+                 buttonsHtml += `
+                    <button class="btn2 vote-for-sig-btn" style="border-style:dashed;">Approve (Sig)</button>
+                    <button class="btn2 vote-against-sig-btn" style="border-style:dashed;">Reject (Sig)</button>
+                `;
+            }
         }
-        buttonsHtml += `<button class="btn2 push-votes-btn" style="border-color: var(--color-blue); display: none;">Push <span class="vote-counter">0</span> Votes</button>`;
+        if (batchApiReady) {
+            buttonsHtml += `<button class="btn2 push-votes-btn" style="border-color: var(--color-blue); display: none;">Push <span class="vote-counter">0</span> Votes</button>`;
+        } else {
+            buttonsHtml += getBatchApiNoticeHtml();
+        }
     }
 
     if ((proposal.state === PROPOSAL_STATES.PENDING || proposal.state === PROPOSAL_STATES.ACTIVE) && isUserGuardian && proposal.proposer.toLowerCase() === userAddress.toLowerCase()) {
@@ -661,8 +892,9 @@ function renderProposals(proposals, targetElement, { isActiveList = false, searc
             const data = JSON.parse(proposal.description);
             if (data.projectName) proposalTitle += `: ${data.projectName}`;
             const investeeWallet = data.wallet || data.investeeWallet;
-            if (investeeWallet && ethers.utils.isAddress(investeeWallet)) {
-                fundingTxHash = fundingTxMap.get(investeeWallet.toLowerCase());
+            fundingTxHash = fundingTxMap.get(proposal.id.toString());
+            if (!fundingTxHash && investeeWallet && ethers.utils.isAddress(investeeWallet)) {
+                fundingTxHash = getFallbackFundingTxHash(proposal, investeeWallet);
             }
             const technicalKeys = new Set(['range', 'rate', 'time', 'checkbox1', 'checkbox2']);
             const mainDetailsParts = [];
@@ -741,6 +973,8 @@ function renderProposals(proposals, targetElement, { isActiveList = false, searc
             }
         }
     });
+
+    if (!isBatchApiAvailable()) showVisibleBatchApiNotices();
 }
 
 // --- Transaction & Signature Functions ---
@@ -815,6 +1049,8 @@ async function castVote(proposalId, support) {
 
 async function signVote(proposalId, support) {
     try {
+        if (!(await ensureBatchApiAvailable())) return;
+
         if ((await new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, provider).getVotes(userAddress)).isZero()) {
             return showCustomAlert("You must delegate voting power to yourself first.");
         }
@@ -848,6 +1084,7 @@ async function signVote(proposalId, support) {
         const signature = await provider.send('eth_signTypedData_v4', [userAddress, JSON.stringify(msgParams)]);
         const reqData = { proposalId: Number(proposalId), support, walletAddress: userAddress, signature: { ...ethers.utils.splitSignature(signature), proposalId: Number(proposalId), support } };
         
+        if (!(await ensureBatchApiAvailable())) return;
         showCustomAlert("Submitting vote signature...");
         const response = await fetch(`${API_BASE_URL}proposal/signature`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reqData) });
         
@@ -870,6 +1107,11 @@ async function signVote(proposalId, support) {
             isAlertShowing = false;
             processAlertQueue();
         }
+        if (isBatchApiTransportError(error)) {
+            markBatchApiUnavailable(getBatchApiErrorReason(error));
+            showCustomAlert(BATCH_API_UNAVAILABLE_MESSAGE);
+            return;
+        }
         showCustomAlert("Vote signature failed: " + (error.message || "User denied. Check console for details."));
         console.error("signVote error:", error);
     }
@@ -877,9 +1119,12 @@ async function signVote(proposalId, support) {
 
 async function pushAllVotesForProposal(proposalId) {
     try {
+        if (!(await ensureBatchApiAvailable())) return;
+
         const response = await fetch(`${API_BASE_URL}proposal/signatures/${proposalId}`);
         if (!response.ok) throw new Error("API fetch failed to get signatures.");
-        const { data: signatures } = await response.json();
+        const { data: signatures } = await parseApiJson(response);
+        if (!Array.isArray(signatures)) throw new Error("Bad API response");
 
         if (!signatures || signatures.length === 0) {
             return showCustomAlert("No pending vote signatures to submit.");
@@ -906,6 +1151,11 @@ async function pushAllVotesForProposal(proposalId) {
             isAlertShowing = false;
             processAlertQueue();
         }
+        if (isBatchApiTransportError(e)) {
+            markBatchApiUnavailable(getBatchApiErrorReason(e));
+            showCustomAlert(BATCH_API_UNAVAILABLE_MESSAGE);
+            return;
+        }
         const reason = e.reason || e.data?.message || e.message;
         if (reason && reason.includes("voter already voted")) {
              showCustomAlert("Transaction failed: The batch contained a signature from a wallet that has already voted on-chain. The API's signature list may be out of sync.");
@@ -916,7 +1166,32 @@ async function pushAllVotesForProposal(proposalId) {
     }
 }
 
-async function updateVoteCounterForProposal(proposalId) { const proposalDiv = document.querySelector(`.proposal[data-proposal-id='${proposalId}']`); if (!proposalDiv) return; const pushButton = proposalDiv.querySelector('.push-votes-btn'); const counterEl = proposalDiv.querySelector('.vote-counter'); if (!pushButton || !counterEl) return; try { const response = await fetch(`${API_BASE_URL}proposal/signatures/${proposalId}`); const { data: signatures = [] } = await response.json(); counterEl.textContent = signatures.length; pushButton.style.display = (signatures.length > 0) ? 'inline-block' : 'none'; } catch(e) { counterEl.textContent = "N/A"; pushButton.style.display = 'none'; } }
+async function updateVoteCounterForProposal(proposalId) {
+    const proposalDiv = document.querySelector(`.proposal[data-proposal-id='${proposalId}']`);
+    if (!proposalDiv) return;
+    const pushButton = proposalDiv.querySelector('.push-votes-btn');
+    const counterEl = proposalDiv.querySelector('.vote-counter');
+    if (!pushButton || !counterEl) return;
+
+    if (!isBatchApiAvailable()) {
+        pushButton.style.display = 'none';
+        counterEl.textContent = "N/A";
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE_URL}proposal/signatures/${proposalId}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const { data: signatures = [] } = await parseApiJson(response);
+        if (!Array.isArray(signatures)) throw new Error("Bad API response");
+        counterEl.textContent = signatures.length;
+        pushButton.style.display = (signatures.length > 0) ? 'inline-block' : 'none';
+    } catch(e) {
+        counterEl.textContent = "N/A";
+        pushButton.style.display = 'none';
+        markBatchApiUnavailable(getBatchApiErrorReason(e));
+    }
+}
 async function submitProposal() {
     openProposalsState = new Set([...document.querySelectorAll('.proposal .proposal-details[style*="block"]')].map(d => d.closest('.proposal').dataset.proposalId));
     const investeeWallet = document.getElementById('p-investeeWallet').value.trim();
@@ -977,6 +1252,8 @@ async function claimRewards() {
 
 async function signDelegation() {
     try {
+        if (!(await ensureBatchApiAvailable())) return;
+
         const dCultContract = new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, signer);
         const nonce = await dCultContract.nonces(userAddress);
         const { chainId } = await provider.getNetwork();
@@ -988,6 +1265,7 @@ async function signDelegation() {
         const signature = await signer._signTypedData(domain, types, value);
         const reqData = { walletAddress: userAddress, signature: { ...value, ...ethers.utils.splitSignature(signature) } };
         
+        if (!(await ensureBatchApiAvailable())) return;
         showCustomAlert("Submitting signature to community pool...");
         const response = await fetch(`${API_BASE_URL}delegate/signature`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(reqData) });
         
@@ -1008,14 +1286,22 @@ async function signDelegation() {
             isAlertShowing = false;
             processAlertQueue();
         }
+        if (isBatchApiTransportError(error)) {
+            markBatchApiUnavailable(getBatchApiErrorReason(error));
+            showCustomAlert(BATCH_API_UNAVAILABLE_MESSAGE);
+            return;
+        }
         showCustomAlert("Signing failed: " + (error.message || "User denied."));
     }
 }
 async function pushAllDelegations() {
     try {
+        if (!(await ensureBatchApiAvailable())) return;
+
         const response = await fetch(`${API_BASE_URL}delegate/signatures`);
         if (!response.ok) throw new Error("API fetch failed.");
-        const { data: signatures } = await response.json();
+        const { data: signatures } = await parseApiJson(response);
+        if (!Array.isArray(signatures)) throw new Error("Bad API response");
         
         if (!signatures || signatures.length === 0) {
             return showCustomAlert("No pending delegation signatures to submit.");
@@ -1031,6 +1317,11 @@ async function pushAllDelegations() {
             setTimeout(initialLoad, 4000);
         }
     } catch(e) {
+        if (isBatchApiTransportError(e)) {
+            markBatchApiUnavailable(getBatchApiErrorReason(e));
+            showCustomAlert(BATCH_API_UNAVAILABLE_MESSAGE);
+            return;
+        }
         showCustomAlert("Failed to push delegations: " + e.message);
     }
 }
@@ -1164,6 +1455,12 @@ window.addEventListener('DOMContentLoaded', () => {
         const copyAction = e.target.closest('.copy-action');
         if (copyAction && copyAction.dataset.copyAddress) {
             copyTextToClipboard(copyAction.dataset.copyAddress);
+            return;
+        }
+
+        const batchNoticeClose = e.target.closest('.batch-api-close-btn');
+        if (batchNoticeClose) {
+            hideBatchApiNotice(batchNoticeClose.closest('.batch-api-notice'));
             return;
         }
 

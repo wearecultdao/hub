@@ -185,6 +185,26 @@ body {
   color: #00ff00;
 }
 
+.batch-api-notice {
+    position: relative;
+    width: 100%;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+    padding: 10px 44px 10px 12px;
+    color: var(--color-orange);
+    border: 1px solid var(--color-orange);
+    background-color: rgba(255, 152, 0, 0.1);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+.batch-api-notice.is-visible {
+    display: flex;
+}
+
 /* Links inside notices */
 .eligibility-notice a {
   color: inherit;
