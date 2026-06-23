@@ -467,7 +467,7 @@ async function updateDelegationStatus() {
                 showAndFadeNotice("The next step is to stake your CULT. This makes you eligible for DAO returns and enables voting after you delegate.");
             }
             
-            delegateBtn.style.display = !isSelfDelegated ? 'inline-block' : 'none';
+            delegateBtn.style.display = (!isSelfDelegated && userDCultBalance.gt(0)) ? 'inline-block' : 'none';
             signDelegationBtn.style.display = (!isSelfDelegated && userDCultBalance.gt(0) && isBatchApiAvailable()) ? 'inline-block' : 'none';
         }
         applyBatchApiAvailabilityToUi();
