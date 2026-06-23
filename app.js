@@ -20,7 +20,7 @@ const ETH_TO_BURN_PER_PROPOSAL = 2.5;
 const ETH_TO_FUND_PER_PROPOSAL = 13;
 const API_BASE_URL = "https://api.cultdao.io/";
 const BATCH_API_HEALTHCHECK_TIMEOUT_MS = 4500;
-const BATCH_API_UNAVAILABLE_MESSAGE = "Gasless signatures are only available through the official CULT frontend at the moment. Direct on-chain delegation and CULT Governor voting still work.";
+const BATCH_API_UNAVAILABLE_MESSAGE = "Gasless signatures are currently unavailable from this origin. Direct on-chain delegation and CULT Governor voting still work.";
 const NOTICE_AUTOHIDE_MS = 180000;
 const NOTICE_FADE_MS = 3500;
 const INITIAL_PAST_PROPOSAL_COUNT = 10;
@@ -160,6 +160,8 @@ async function parseApiJson(response) {
     }
 }
 function getCounterFromPayload(payload) {
+    if (payload?.code !== undefined && Number(payload.code) !== 200) return null;
+    if (payload?.data === undefined || payload?.data === null || payload?.data === '') return 0;
     const count = Number(payload?.data);
     return Number.isFinite(count) && count >= 0 ? count : null;
 }
