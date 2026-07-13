@@ -22,7 +22,6 @@
     "0x956224e61669243a92b687554909cac253361d1a": { "name": "cultistartorias.eth", "labels": ["Co-founder", "Known wallet"], "description": "Artorias wallet, identified as a CULT DAO co-founder wallet." },
     "0x6b8f1281c660168f381bb8e427c33d9cc1e879e5": { "name": "tehgamesmaster.eth", "labels": ["Known wallet"], "description": "Wallet label supplied during the UNCX review." },
     "0x5eff77571184427f5a9e951597571b5259820b48": { "name": "VEMP deployer", "labels": ["Known wallet"], "description": "Wallet label supplied during the UNCX review." },
-    "0x68ccce964cefdbd946da2eff675e658147a501a1": { "name": "slavesandbulldozers.eth", "labels": ["Known wallet", "Red flag"], "description": "User-supplied label; previously abbreviated as S&B. User-supplied note: scammer / red flag." },
     "0xb6b5c79f6ecb0acc157aa6d543050178dc5f7118": { "name": "cult-dao.eth (Dev allocation 9)", "labels": ["Dev allocation", "Dev 9", "Medium"], "description": "Named in the Medium transparency article dev-wallet list and also known here as cult-dao.eth." },
     "0x33bbaf545f868c861ec9868a902e3a04b7f33aaa": { "name": "Dev allocation 2", "labels": ["Dev allocation", "Dev 2", "Medium"] },
     "0x4e9f019b1126f9faf63d183ac8fb02f0f9310dbf": { "name": "Dev allocation 5", "labels": ["Dev allocation", "Dev 5", "Medium"] },
