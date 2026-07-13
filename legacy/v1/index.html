@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<!-- ============================================================
+     CULT DAO Hub — v1.0.0 — 2025-08-23
+     Developed by fl0ri0 (github.com/fl0ri0)
+     Gifted to the CULT DAO community — published under github.com/wearecultdao/hub
+     Licensed under MIT
+============================================================ -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src 'self' https://*.alchemy.com https://api.coingecko.com https://api.cultdao.io https://api.github.com; object-src 'none';"> 
+   <title>CULT DAO | HUB</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js" type="application/javascript"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto+Mono:wght@400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/dao.css">
+</head>
+<body>
+
+    <div id="custom-alert-overlay">
+        <div class="custom-alert-modal">
+            <p id="custom-alert-message"></p>
+            <button id="custom-alert-close" class="btn">Close</button>
+        </div>
+    </div>
+    <div id="disclaimer-overlay">
+        <div class="disclaimer-modal">
+                  <h4>YOU ARE ENTERING SOVEREIGN TERRITORY.</h4>
+            <p>
+                This is not a website. It is a key, built by revolutionaries for revolutionaries, to unlock the CULT DAO protocol.
+            </p>
+            <p>
+                Before you proceed, you must understand and embrace the truths of this new world:
+            </p>
+            <ul style="margin-left: 20px; margin-bottom: 1rem; opacity: 0.9;">
+                <li><strong>THE CODE IS LAW.</strong> Your actions on-chain are final. There are no central authorities, no support tickets, and no do-overs. You are the sole executor of your will.</li>
+                <li><strong>YOU ARE SOVEREIGN.</strong> You have escaped the old system. This freedom comes with total responsibility. Guard your keys as you would guard your life. No one will ever ask for them.</li>
+            </ul>
+            <p>
+                This hub is an open-source tool, offered as-is to The Many. Scrutinize the code on <a href="https://github.com/wearecultdao/hub" target="_blank" rel="noopener noreferrer">GitHub</a>.
+            </p>
+            <div class="button-group" style="justify-content: center; margin-top: 20px;">
+                <button id="accept-disclaimer-btn" class="btn">I CLAIM MY SOVEREIGNTY</button>
+            </div>
+        </div>
+    </div>
+    <div class="container">
+        <header class="header">
+            <h1>CULT DAO</h1>
+            <div class="header-actions">
+			  <button id="shuffle-theme-btn" class="icon-button" title="Shuffle Experience">
+    <!-- SHUFFLE SVG -->
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+      <path d="M237.66,178.34a8,8,0,0,1,0,11.32l-24,24a8,8,0,0,1-11.32-11.32L212.69,192H200.94a72.12,72.12,0,0,1-58.59-30.15l-41.72-58.4A56.1,56.1,0,0,0,55.06,80H32a8,8,0,0,1,0-16H55.06a72.12,72.12,0,0,1,58.59,30.15l41.72,58.4A56.1,56.1,0,0,0,200.94,176h11.75l-10.35-10.34a8,8,0,0,1,11.32-11.32ZM143,107a8,8,0,0,0,11.16-1.86l1.2-1.67A56.1,56.1,0,0,1,200.94,80h11.75L202.34,90.34a8,8,0,0,0,11.32,11.32l24-24a8,8,0,0,0,0-11.32l-24-24a8,8,0,0,0-11.32,11.32L212.69,64H200.94a72.12,72.12,0,0,0-58.59,30.15l-1.2,1.67A8,8,0,0,0,143,107Zm-30,42a8,8,0,0,0-11.16,1.86l-1.2,1.67A56.1,56.1,0,0,1,55.06,176H32a8,8,0,0,0,0,16H55.06a72.12,72.12,0,0,0,58.59-30.15l1.2-1.67A8,8,0,0,0,113,149Z"/>
+    </svg>
+  </button>
+
+  <button id="theme-toggle" class="icon-button" title="Switch Mood">
+    <!-- MOOD SVG -->
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+      <path d="M200.77,53.89A103.27,103.27,0,0,0,128,24h-1.07A104,104,0,0,0,24,128c0,43,26.58,79.06,69.36,94.17A32,32,0,0,0,136,192a16,16,0,0,1,16-16h46.21a31.81,31.81,0,0,0,31.2-24.88,104.43,104.43,0,0,0,2.59-24A103.28,103.28,0,0,0,200.77,53.89ZM213.81,147.7A15.89,15.89,0,0,1,198.21,160H152a32,32,0,0,0-32,32,16,16,0,0,1-21.31,15.07C62.49,194.3,40,164,40,128a88,88,0,0,1,87.09-88h.9a88.35,88.35,0,0,1,88,87.25A88.86,88.86,0,0,1,213.81,147.7ZM140,76a12,12,0,1,1-12-12A12,12,0,0,1,140,76ZM96,100A12,12,0,1,1,84,88,12,12,0,0,1,96,100Zm0,56a12,12,0,1,1-12-12A12,12,0,0,1,96,156Zm88-56a12,12,0,1,1-12-12A12,12,0,0,1,184,100Z"/>
+    </svg>
+  </button>
+
+  <div id="currency-widget" class="currency-widget" style="display: none;">
+    <button id="currency-selector-btn" class="icon-button" title="Switch Currency">
+      <!-- CURRENCY SVG -->
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
+        <path d="M184,89.57V84c0-25.08-37.83-44-88-44S8,58.92,8,84v40c0,20.89,26.25,37.49,64,42.46V172c0,25.08,37.83,44,88,44s88-18.92,88-44V132C248,111.3,222.58,94.68,184,89.57ZM232,132c0,13.22-30.79,28-72,28-3.73,0-7.43-.13-11.08-.37C170.49,151.77,184,139,184,124V105.74C213.87,110.19,232,122.27,232,132ZM72,150.25V126.46A183.74,183.74,0,0,0,96,128a183.74,183.74,0,0,0,24-1.54v23.79A163,163,0,0,1,96,152,163,163,0,0,1,72,150.25Zm96-40.32V124c0,8.39-12.41,17.4-32,22.87V123.5C148.91,120.37,159.84,115.71,168,109.93ZM96,56c41.21,0,72,14.78,72,28s-30.79,28-72,28S24,97.22,24,84,54.79,56,96,56ZM24,124V109.93c8.16,5.78,19.09,10.44,32,13.57v23.37C36.41,141.4,24,132.39,24,124Zm64,48v-4.17c2.63.1,5.29.17,8,.17,3.88,0,7.67-.13,11.39-.35A121.92,121.92,0,0,0,120,171.41v23.46C100.41,189.4,88,180.39,88,172Zm48,26.25V174.4a179.48,179.48,0,0,0,24,1.6,183.74,183.74,0,0,0,24-1.54v23.79a165.45,165.45,0,0,1-48,0Zm64-3.38V171.5c12.91-3.13,23.84-7.79,32-13.57V172C232,180.39,219.59,189.4,200,194.87Z"/>
+      </svg>
+    </button>
+                    <div id="currency-dropdown" class="wallet-dropdown">
+                        <!-- Options will be populated by app.js -->
+                    </div>
+                </div>
+                <div class="wallet-widget">
+                    <button id="connect-wallet-btn" class="btn">Connect Wallet</button>
+                    <div id="wallet-dropdown" class="wallet-dropdown">
+                         <a href="https://app.uniswap.org/#/swap?outputCurrency=0xf0f9d895aca5c8678f706fb8216fa22957685a13" target="_blank" rel="noopener noreferrer" class="dropdown-item">Buy on Uniswap</a>
+                        <button id="copy-address-btn" class="dropdown-item">Copy Address</button>
+                        <a id="etherscan-link" href="#" target="_blank" rel="noopener noreferrer" class="dropdown-item">View on Etherscan</a>
+                        <button id="disconnect-btn" class="dropdown-item">Disconnect</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+        <div id="reminder-banner" style="display: none;">
+            <p>This is a community-built tool for CULT DAO. (Latest update: <span id="repo-update-date">...</span>)</p>
+            <button id="close-reminder-btn">×</button>
+        </div>
+        <canvas id="snap-canvas" width="800" height="60" style="display: none;"></canvas>
+        <main id="dapp-content" class="dapp-content">
+            <!-- Wallet Section (Always Open) -->
+            <section class="ui-section">
+                <div class="info-grid">
+                    <div class="info-item"><h3>Wallet</h3><span id="wallet-address" class="value">...</span></div>
+                    <div class="info-item"><h3>Delegation Status</h3><span id="delegation-status" class="value">...</span></div>
+                    <div class="info-item"><h3 id="rights-label">Your Rights</h3><span id="proposal-rights" class="value">...</span></div>
+                    <div class="info-item"><h3>Your CULT</h3><span id="cult-balance" class="value">0.00</span></div>
+                    <div class="info-item"><h3>Your dCULT</h3><span id="dcult-balance" class="value">0.00</span></div>
+					<div class="info-item"><h3>Combined CULT Holdings</h3><span id="total-cult-holdings" class="value">...</span></div>
+					<div class="info-item"><h3 id="total-cult-value-label">Total Value</h3><span id="total-cult-value" class="value">...</span></div>
+					<div class="info-item"><h3>Guardian Threshold</h3><span id="top50staker" class="value">...</span></div>
+                </div>
+                <div id="delegate-section" class="button-group" style="display: none;">
+                    <button id="delegate-btn" class="btn">Delegate (TX)</button>
+                    <button id="sign-delegation-btn" class="btn" style="border-style: dashed;">Delegate (Sig)</button>
+                    <button id="push-delegates-btn" class="btn">Push <span id="delegate-counter">0</span> Delegates</button>
+                    <div id="delegation-batch-api-notice" class="batch-api-notice" aria-live="polite"></div>
+                    <div id="top50-notice-container" class="eligibility-notice" style="margin-top: 12px; width: 100%; position: relative; display: none;">
+    <p id="top50-notice" style="margin: 0; padding-right: 25px;"></p>
+    <button id="close-top50-notice-btn" class="notice-close-btn">×</button>
+</div>
+                </div>
+            </section>
+
+            <details id="details-tracked-wallets">
+                <summary><h2>Track Your Wallets</h2></summary>
+                <section class="ui-section" style="margin-top: 1rem;">
+                    <h4>Combined Tracked Wallets</h4>
+                    <div class="info-grid" id="combined-tracked-wallets-info">
+                        <div class="info-item"><h3>Combined CULT</h3><span id="combined-tracked-cult" class="value">0.00</span></div>
+                        <div class="info-item"><h3>Combined dCULT</h3><span id="combined-tracked-dcult" class="value">0.00</span></div>
+                        <div class="info-item"><h3>Combined Holdings</h3><span id="combined-tracked-total" class="value">0.00</span></div>
+                        <div class="info-item"><h3 id="combined-tracked-value-label">Combined Value</h3><span id="combined-tracked-value" class="value">...</span></div>
+                    </div>
+                     <hr style="border-color: var(--color-border-stroke); opacity: 0.2; margin: 30px 0;">
+                       <div class="form-group full-width">
+                        <label for="track-wallet-input">Add Wallet(s) to Track</label>
+                        <div class="input-with-button">
+                            <input type="text" id="track-wallet-input" placeholder="0x... or ENS name. Seperated by ;">
+                            <button id="add-tracked-wallet-btn" class="btn-max">Add</button>
+                        </div>
+                        <small style="opacity: 0.7; margin-top: 5px; display: block;">Add multiple wallets to view your combined holdings. </small>
+                    </div>
+                    <div class="input-with-button">
+                      <div class="button-group" style="margin-bottom: 20px;">
+                        <button id="clear-tracked-wallets-btn" class="btn" style="display: none;">Clear All Tracked Wallets</button>
+                      </div>
+                    </div>
+                    <div id="tracked-wallets-list">
+                        <p style="text-align: center; opacity: 0.6; padding: 20px;">No wallets being tracked yet.</p>
+                    </div>
+                </section>
+            </details>
+            
+            <details id="details-staking">
+                <summary><h2>Staking & Returns</h2></summary>
+                <section class="ui-section" style="margin-top: 1rem;">
+                    <div class="form-grid">
+                        <div class="form-group full-width">
+                            <div class="label-line">
+                                <label for="stake-amount">Amount of CULT to Stake</label>
+                                <p class="available-balance" id="available-cult">Available: 0.0</p>
+                            </div>
+                            <div class="input-with-button">
+                                <input type="text" id="stake-amount" placeholder="0.0">
+                                <button id="stake-max-btn" class="btn-max">Max</button>
+                            </div>
+                            <div class="button-group" style="margin-top: 10px;"><button id="stake-btn" class="btn">Stake</button></div>
+                        </div>
+                         <div class="form-group full-width">
+                            <div class="label-line">
+                                <label for="unstake-amount">Amount of dCULT to Unstake</label>
+                                <p class="available-balance" id="available-dcult">Available: 0.0</p>
+                            </div>
+                            <div class="input-with-button">
+                                <input type="text" id="unstake-amount" placeholder="0.0">
+                                <button id="unstake-max-btn" class="btn-max">Max</button>
+                            </div>
+                            <div class="button-group" style="margin-top: 10px;"><button id="unstake-btn" class="btn">Unstake</button></div>
+                        </div>
+                    </div>
+                    <hr style="border-color: var(--color-border-stroke); opacity: 0.2; margin: 30px 0;">
+                    <div class="form-group">
+                        <label>Claimable CULT from Your DAO Investments</label>
+                        <div class="info-box" style="margin-top: 10px;">
+                            <span id="claimable-rewards" class="value">0.00</span>
+                        </div>
+                    </div>
+                    <div class="button-group">
+                        <button id="claim-rewards-btn" class="btn" style="display: none;">Claim Your Returns</button>
+                    </div>
+                </section>
+            </details>
+
+            <details id="details-active-proposals">
+                <summary><h2>Active Proposals</h2></summary>
+                <section class="ui-section proposal-list" id="active-proposal-list" style="margin-top: 1rem;">
+                    <p>...</p>
+                </section>
+            </details>  
+
+            <details id="details-dao-metrics">
+                <summary><h2>DAO Metrics</h2></summary>
+                <section class="ui-section" id="dao-metrics-section" style="margin-top: 1rem;">
+                    <h4>Proposals Stats</h4>
+                    <div class="info-row">
+                        <div class="info-item"><h3>Active Proposals</h3><span id="metric-active-proposals" class="value">...</span></div>
+                        <div class="info-item"><h3>Passed Proposals</h3><span id="metric-passed-proposals" class="value">...</span></div>
+                        <div class="info-item"><h3>Defeated Proposals</h3><span id="metric-defeated-proposals" class="value">...</span></div>
+                        <div class="info-item"><h3>Executed Proposals</h3><span id="metric-executed-proposals" class="value">...</span></div>
+                        <div class="info-item"><h3>Cancelled after Passing</h3><span id="metric-skipped-passed-proposals" class="value">...</span></div>
+                        <div class="info-item"><h3>Total Cancelled Proposals</h3><span id="metric-cancelled-proposals" class="value">...</span></div>
+                        <div class="info-item"><h3>Total Proposals</h3><span id="metric-total-proposals" class="value">...</span></div>
+                    </div>
+                    <hr style="border-color: var(--color-border-stroke); opacity: 0.2; margin: 30px 0;">
+                    <h4>Supply Stats</h4>
+                    <div class="info-row">
+                        <div class="info-item"><h3>Total CULT Supply</h3><span id="metric-cult-supply" class="value">...</span></div>
+                        <div class="info-item"><h3>Burned CULT</h3><span id="metric-cult-burned" class="value">...</span></div>
+                        <div class="info-item"><h3>Burned %</h3><span id="metric-cult-burned-percent" class="value">...</span><div class="minibar"><div class="fill" id="bar-burned"></div></div></div>
+                        <div class="info-item"><h3>Circulating Supply</h3><span id="metric-cult-circulating" class="value">...</span></div>
+                        <div class="info-item"><h3>Circulating %</h3><span id="metric-cult-circulating-percent" class="value">...</span><div class="minibar"><div class="fill" id="bar-circulating"></div></div></div>
+                        <div class="info-item"><h3>Staked CULT</h3><span id="metric-cult-staked" class="value">...</span></div>
+                        <div class="info-item"><h3 id="metric-staked-value-label">Staked CULT Value</h3><span id="metric-staked-value" class="value">...</span></div>
+                        <div class="info-item"><h3>Staked CULT %</h3><span id="metric-staked-percent" class="value">...</span><div class="minibar"><div class="fill" id="bar-staked"></div></div></div>
+                        <div class="info-item"><h3>Staked vs Circ. Supply</h3><span id="metric-staked-vs-circ-percent" class="value">...</span><div class="minibar"><div class="fill" id="bar-staked-vs-circ"></div></div></div>
+                    </div>
+                    <hr style="border-color: var(--color-border-stroke); opacity: 0.2; margin: 30px 0;">
+                    <h4>Treasury Stats</h4>
+                    <div class="info-row justify-start"> 
+                        <div class="info-item"><h3>Treasury CULT</h3><span id="metric-treasury-cult" class="value">...</span></div>
+                        <div class="info-item"><h3>Treasury Value (ETH)</h3><span id="metric-treasury-value-eth" class="value">...</span></div>
+                        <div class="info-item"><h3 id="metric-treasury-value-label">Treasury Value</h3><span id="metric-treasury-value" class="value">...</span></div>
+                    </div>
+                    <hr style="border-color: var(--color-border-stroke) dashed; opacity: 0.2; margin: 30px 0;">
+                    <div class="info-row justify-start">
+                        <div class="info-item"><h3>ETH Sent to Burn</h3><span id="metric-eth-burned" class="value">...</span></div>
+                        <div class="info-item"><h3>ETH Sent to Investees</h3><span id="metric-eth-funded" class="value">...</span></div>
+                        <div class="info-item"><h3>Total ETH Disbursed</h3><span id="metric-eth-total-disbursed" class="value">...</span></div> 
+                    </div>
+                    <hr style="border-color: var(--color-border-stroke); opacity: 0.2; margin: 30px 0;">
+                    <h4>Pool Stats</h4>
+                    <div class="info-row">
+                        <div class="info-item"><h3 id="metric-cult-price-label">CULT Price</h3><span id="metric-cult-price" class="value">...</span></div>
+                        <div class="info-item"><h3>Pooled CULT</h3><span id="metric-cult-lp" class="value">...</span></div>
+                        <div class="info-item"><h3>Pooled ETH</h3><span id="metric-eth-lp" class="value">...</span></div>
+                        <div class="info-item"><h3 id="metric-liquidity-label">Liquidity</h3><span id="metric-liquidity" class="value">...</span></div>
+                        <div class="info-item"><h3 id="metric-mcap-label">Market Cap</h3><span id="metric-mcap" class="value">...</span></div>
+                        <div class="info-item"><h3>Liquidity/Marketcap</h3><span id="metric-liq-mcap" class="value">...</span></div>
+                        <div class="info-item"><h3>% Liquidity locked</h3><span id="metric-locked-liq" class="value">...</span></div>
+                        <div class="info-item"><h3>Liq. locked until</h3><span id="metric-unlock-liq" class="value">...</span></div>
+                        <div class="info-item"><h3>ETH/CULT Price</h3><span id="metric-eth-price-cult" class="value">...</span></div>
+                        <div class="info-item"><h3>CULT/ETH Price</h3><span id="metric-cult-price-eth" class="value">...</span></div>
+                        <div class="info-item"><h3>% of Total Supply in LP</h3><span id="metric-lp-percent-total" class="value">...</span><div class="minibar"><div class="fill" id="bar-lp-percent-total"></div></div></div>
+                        <div class="info-item"><h3>% of Circulating Supply in LP</h3><span id="metric-lp-percent-circ" class="value">...</span><div class="minibar"><div class="fill" id="bar-lp-percent-circ"></div></div></div>
+                    </div>
+                </section>
+            </details>
+            
+            <details id="details-submit-proposal">
+                <summary><h2>Submit a New Proposal</h2></summary>
+                <section class="ui-section" id="submit-proposal-section" style="margin-top: 1rem;">
+                    <div id="proposal-form-fields">
+                        <div class="form-grid">
+                            <div class="form-group"><label for="p-projectName">Project Name (Required)</label><input type="text" id="p-projectName" placeholder="e.g., Awesome Project"></div>
+                            <div class="form-group"><label for="p-investeeWallet">Investee Wallet (Required)</label><input type="text" id="p-investeeWallet" placeholder="0x..."></div>
+                            <div class="form-group full-width"><label for="p-shortDescription">Short Description (Required)</label><textarea id="p-shortDescription"></textarea></div>
+                            <div class="form-group"><label for="p-socialChannel">Socials (Linktree, Twitter, etc)</label><input type="text" id="p-socialChannel" placeholder="https://..."></div>
+                            <div class="form-group"><label for="p-links">Docs/Website Links</label><input type="text" id="p-links" placeholder="https://..."></div>
+                            <div class="form-group full-width"><label for="p-manifestoOutlinedFit">How does this fit the manifesto?</label><textarea id="p-manifestoOutlinedFit"></textarea></div>
+                        </div>
+                        <details>
+                            <summary class="advanced-options-summary">Show Advanced Options</summary>
+                            <div class="form-grid" style="margin-top: 20px;">
+                                <div class="form-group"><label>Proposer's Wallet</label><div id="p-proposerWallet" class="value" style="padding: 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--color-border); border-radius: 4px; min-height: 45px; display:flex; align-items:center;"></div></div>
+                                 <div class="form-group"><label for="p-returnModel">Return Model</label><input type="text" id="p-returnModel" placeholder="e.g., 0.4% of token supply"></div>
+                                <div class="form-group full-width"><label for="p-proposedTimeline">Proposed Timeline</label><textarea id="p-proposedTimeline" placeholder="e.g., Q1: Launch, Q2: Feature X..."></textarea></div>
+                                <div class="form-group full-width"><label for="p-fundsStoredHeldUtilised">How will funds be stored/utilised?</label><textarea id="p-fundsStoredHeldUtilised" placeholder="e.g., 50% Multisig, 50% operations..."></textarea></div>
+                            </div>
+                        </details>
+                    </div>
+                    <div class="button-group" style="margin-top: 20px;">
+                        <button id="submit-proposal-btn" class="btn">Submit Proposal</button>
+                    </div>
+                    <p id="proposal-eligibility-notice" class="eligibility-notice"></p>
+                </section>
+            </details>
+           
+            <details id="details-past-proposals">
+                <summary><h2>Past Proposals</h2></summary>
+                <section class="ui-section" style="margin-top: 1rem;">
+                     <div class="form-group">
+                        <label for="search-proposals">Search Past Proposals</label>
+                        <input type="text" id="search-proposals" placeholder="Search by ID, Proposer Address, or any keyword...">
+                    </div>
+                    <div class="filter-group">
+                        <label><input type="checkbox" id="filter-executed"> Show Executed Only</label>
+                        <label><input type="checkbox" id="filter-defeated"> Show Defeated Only</label>
+                        <label><input type="checkbox" id="filter-hide-cancelled"> Hide Cancelled</label>
+                    </div>
+                    <div class="proposal-list" id="past-proposal-list">
+                        <p>...</p>
+                    </div>
+                    <div class="button-group" style="justify-content: center; margin-top: 20px;">
+                        <button id="load-more-btn" class="btn" style="display: none;">Load Older Proposals</button>
+                    </div>
+                </section>
+            </details>
+        </main>
+    </div>
+
+    <template id="proposal-template">
+        <div class="proposal">
+            <div class="proposal-title">
+                <h3 class="proposal-name-title"></h3>
+                <span class="proposal-status"></span>
+            </div>
+    
+            <div class="proposal-timer-container" style="margin-top: 0px; margin-bottom: 8px; display: none; align-items: center;">
+                <span style="opacity: 0.7; margin-right: 6px; font-size: 0.9rem;">Ends in:</span>
+                <span class="proposal-timer" style="font-family: var(--font-mono); color: var(--color-green); font-size: 0.9rem;">...</span>
+            </div>
+    
+            <div class="button-group" style="margin-top: 12px;">
+                <button class="btn-expand view-details-btn">Show Details ▼</button>
+            </div>
+            
+            <div class="proposal-details" style="display: none;">
+                <div class="details-section" style="margin-top:20px">
+                    <div class="details-grid">
+                        <div class="details-item"><strong>For Votes:</strong><br><span class="prop-for-votes"></span></div>
+                        <div class="details-item"><strong>Against Votes:</strong><br><span class="prop-against-votes"></span></div>
+                        <div class="details-item"><strong>Total Votes:</strong><br><span class="prop-total-votes"></span></div>
+                        <div class="details-item"><strong>Proposer:</strong><br><span class="prop-proposer"></span></div>
+                        <div class="details-item"><strong>Start Block:</strong><br><span class="prop-start-block"></span></div>
+                        <div class="details-item"><strong>End Block:</strong><br><span class="prop-end-block"></span></div>
+                        <div class="details-item"><strong>ETA:</strong><br><span class="prop-eta"></span></div>
+                        <div class="details-item prop-execution-tx" style="display: none;"><strong>Execution TX:</strong><br><span class="prop-execution-tx-link"></span></div>
+                        <div class="details-item prop-funding-tx" style="display: none;"><strong>Payment TX:</strong><br><span class="prop-funding-tx-link"></span></div>
+                    </div>
+                </div>
+                <div class="details-section prop-description-container"></div>
+                <div class="proposal-actions-container"></div>
+                <details>
+                    <summary class="advanced-options-summary">Technical Data</summary>
+                    <div class="details-section prop-technical-data"></div>
+                </details>
+            </div>
+        </div>
+    </template>
+
+    <script type="module" src="contracts.js"></script>
+    <script type="module" src="app.js"></script>
+    
+</body>
+</html>
