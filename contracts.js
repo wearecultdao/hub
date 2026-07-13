@@ -1,11 +1,11 @@
 // ============================================================
-// CULT DAO Hub — v1.0.0 — 2025-08-23
+// CULT DAO Hub — v2.0.0 — 2026-07-13
 // Developed by fl0ri0 (github.com/fl0ri0)
 // Gifted to the CULT DAO community — published under github.com/wearecultdao/hub
 // Licensed under MIT
 // ============================================================
 
-// CONTRACTS.JS - Version 1.00
+// CONTRACTS.JS - Version 2.00
 // =================================================================
 // All ABIs below are for the IMPLEMENTATION contracts,
 // while the addresses are for the PROXY contracts.

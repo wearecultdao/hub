@@ -1,0 +1,66 @@
+{
+  "app": "portfolio-tracker",
+  "version": 4,
+  "exportedAt": "2026-07-11T19:43:40.893Z",
+  "activeWalletSetId": "dao-funds",
+  "walletSets": [
+    {
+      "id": "dao-funds",
+      "name": "CULTDAO Funds",
+      "wallets": [
+        {"address":"0xb2525a2D6488EA0037bB2f439959AeB3BfaF8651","label":"guardiansofcultdao.eth","note":""},
+        {"address":"0xd2Bf2A51d0D64653e1879954Ac3E0f8b4Ab88221","label":"","note":""},
+        {"address":"0x2512B236779CcC38799B83F5d4Db52110fAC0968","label":"","note":""},
+        {"address":"0x09929fcfe8F7132281E0ecC5Ad348463E085b368","label":"guardiansofcultdao2.eth","note":""},
+        {"address":"0xDFbBd2a0911707C96E216a22294cc284f9811787","label":"cultgaslessrefund.eth","note":"https://docs.google.com/spreadsheets/d/1yRy_1CzRT77SpDzpeF69pSmBFbXvszWo3E_I7x8jGS8/edit?gid=0#gid=0"},
+        {"address":"0x2F177F79A078efbB8cC329b96dE4fE55f534A138","label":"Xen - Proposal 161","note":""},
+        {"address":"0x1c8e0d0a33face438684c6a1dbd6560474B122c0","label":"IDriss - Proposal 90","note":"Versting until 2028 https://app.sablier.com/vesting/stream/LT3-8453-1980"},
+        {"address":"0x0114bE4D9D75Cc294331f1cf3bccAA0353c8c6b1","label":"Pot of Gold - Proposal 79","note":""},
+        {"address":"0x00737334C7662C04051044E18AfE9965C265f944","label":"Pepecoin - Proposal 177","note":""},
+        {"address":"0x0AE1235455F92B9784d95b98d5667835098Ee0B1","label":"Ethena - Proposal 186-187","note":""},
+        {"address":"0x1F9d87D431B9584Dc201430cDc0b709449fAF183","label":"Ethena - Proposal 186-187","note":""},
+        {"address":"0x57fb5558B540c4A052B097157D0b5253b63d0f9B","label":"Proposal 186-187","note":""},
+        {"address":"0x5f0b768E49BeBac6408E327b6e69Eab199464438","label":"Proposal 186-187","note":""}
+      ],
+      "showTreasury": true,
+      "presetVersion": "export:2026-07-11T18:38:51.948Z",
+      "presetSnapshotDate": "2026-07-11",
+      "presetAddresses": [
+        "0xb2525a2D6488EA0037bB2f439959AeB3BfaF8651",
+        "0xd2Bf2A51d0D64653e1879954Ac3E0f8b4Ab88221",
+        "0x2512B236779CcC38799B83F5d4Db52110fAC0968",
+        "0x09929fcfe8F7132281E0ecC5Ad348463E085b368",
+        "0xDFbBd2a0911707C96E216a22294cc284f9811787",
+        "0x2F177F79A078efbB8cC329b96dE4fE55f534A138",
+        "0x1c8e0d0a33face438684c6a1dbd6560474B122c0",
+        "0x0114bE4D9D75Cc294331f1cf3bccAA0353c8c6b1",
+        "0x00737334C7662C04051044E18AfE9965C265f944",
+        "0x0AE1235455F92B9784d95b98d5667835098Ee0B1",
+        "0x1F9d87D431B9584Dc201430cDc0b709449fAF183",
+        "0x57fb5558B540c4A052B097157D0b5253b63d0f9B",
+        "0x5f0b768E49BeBac6408E327b6e69Eab199464438"
+      ],
+      "presetWallets": [
+        {"address":"0xb2525a2D6488EA0037bB2f439959AeB3BfaF8651","label":"guardiansofcultdao.eth","note":""},
+        {"address":"0xd2Bf2A51d0D64653e1879954Ac3E0f8b4Ab88221","label":"","note":""},
+        {"address":"0x2512B236779CcC38799B83F5d4Db52110fAC0968","label":"","note":""},
+        {"address":"0x09929fcfe8F7132281E0ecC5Ad348463E085b368","label":"guardiansofcultdao2.eth","note":""},
+        {"address":"0xDFbBd2a0911707C96E216a22294cc284f9811787","label":"cultgaslessrefund.eth","note":"https://docs.google.com/spreadsheets/d/1yRy_1CzRT77SpDzpeF69pSmBFbXvszWo3E_I7x8jGS8/edit?gid=0#gid=0"},
+        {"address":"0x2F177F79A078efbB8cC329b96dE4fE55f534A138","label":"Xen - Proposal 161","note":""},
+        {"address":"0x1c8e0d0a33face438684c6a1dbd6560474B122c0","label":"IDriss - Proposal 90","note":"Versting until 2028 https://app.sablier.com/vesting/stream/LT3-8453-1980"},
+        {"address":"0x0114bE4D9D75Cc294331f1cf3bccAA0353c8c6b1","label":"Pot of Gold - Proposal 79","note":""},
+        {"address":"0x00737334C7662C04051044E18AfE9965C265f944","label":"Pepecoin - Proposal 177","note":""},
+        {"address":"0x0AE1235455F92B9784d95b98d5667835098Ee0B1","label":"Ethena - Proposal 186-187","note":""},
+        {"address":"0x1F9d87D431B9584Dc201430cDc0b709449fAF183","label":"Ethena - Proposal 186-187","note":""},
+        {"address":"0x57fb5558B540c4A052B097157D0b5253b63d0f9B","label":"Proposal 186-187","note":""},
+        {"address":"0x5f0b768E49BeBac6408E327b6e69Eab199464438","label":"Proposal 186-187","note":""}
+      ]
+    }
+  ],
+  "hiddenAssets": [
+    "base:0x267f66701644270ef2cf1c5182c7b7911f7755c3",
+    "base:0x300e0a7cd8c61d84b175314b701f0c62e4d6f6bd"
+  ],
+  "ownerAliases": {},
+  "currency": "usd"
+}

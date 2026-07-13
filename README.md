@@ -2,117 +2,81 @@
 
 **YOU ARE ENTERING SOVEREIGN TERRITORY.**
 
-This is not just a website but a community-built, open-source interface for interacting directly with the CULT DAO ecosystem. This hub is a comprehensive, transparent, and user-friendly dashboard for all members of the DAO, from Guardians to The Many.
+The CULT DAO Hub 2.0 is a community-built, open-source interface for exploring and participating in the CULT DAO ecosystem. It brings the original Hub, Portfolio Tracker, Governance Dashboard, Delegation Checker, and Burntracker into one static site while preserving the original on-chain workflows.
 
-There is no middleman. No central server. No backdoors.
-
----
-
-## 🚀 Run Locally
-
-This frontend is designed to run easily on your local machine, with no complex setup and minimal dependencies. The hub is a static web app. It runs anywhere with a simple HTTP server.
-
-### Prerequisites
-- **Python 3** must be installed.  
-  - **macOS / Linux:** Usually pre-installed.  
-  - **Windows:** Download from [python.org](https://www.python.org/downloads/) and check **“Add Python to PATH”** during install.  
-
----
-
-### Step 1: Get the Code
-1. Click the green **Code** button on this repository.  
-2. Select **Download ZIP**.  
-3. Unzip the file (e.g. `hub-main.zip`) on your computer.  
-
----
-
-### Step 2: Open a Terminal
-- **macOS / Linux:** Open **Terminal**.  
-- **Windows:** Open **Command Prompt** or **PowerShell**.  
-
----
-
-### Step 3: Navigate to the Folder
-Type `cd ` (that’s c, d, and a space) into your terminal,  
-**then drag and drop the unzipped `hub-main` folder into the terminal window**.  
-Press **Enter** — now your terminal is inside the project folder.  
-
----
-
-### Step 4: Start the Server
-
-**macOS / Linux**
-```bash
-python3 -m http.server
-```
-
-**Windows (PowerShell)**
-```bash
-python -m http.server
-```
-
-Your terminal will show something like:
-
-```
-Serving HTTP on :: port 8000 …
-```
-
----
-
-### Step 5: Open in Browser
-
-
-Now open [http://localhost:8000](http://localhost:8000) in your web browser.  
-
-Stop the server anytime with `Ctrl + C`.  
-
----
-
-### 🔧 Alternative for Developers (Git)
-
-If you have Git installed, you can clone the repository for easier updates:
-
-```bash
-# Clone the repository
-git clone https://github.com/wearecultdao/hub.git
-
-# Navigate into the directory
-cd hub
-
-# Start the server (use 'python' on Windows)
-python3 -m http.server
-```
+No account. No custody. Your wallet shows every transaction before you approve it.
 
 ---
 
 ## 💡 Features
 
-- **Wallet Management:** Connect and view CULT / dCULT balances, delegation, and voting power.  
-- **Staking & Rewards:** Stake, unstake, and claim rewards in one place.  
-- **Governance:** Browse proposals (active, pending, past), delegate, and vote directly on-chain or via gasless signature.  
-- **DAO Metrics:** Live dashboard of supply, treasury, liquidity pools, and market data.  
-- **Wallet Tracking:** Watch multiple addresses or ENS names, including multisigs.  
-- **Customization:** Switch currencies and themes — or shuffle for a fresh look.  
- 
+The six task-focused entries are:
+
+- **Staking & Returns** — stake CULT, unstake dCULT, claim returns, and manage delegation.
+- **Portfolio** — inspect Ethereum, Base, and Polygon wallets, collections, Safe ownership, and assets.
+- **Proposals** — browse proposals; vote, propose, cancel, queue, or execute through the preserved Hub workflow.
+- **Delegation** — check voting readiness, delegation state, voting rights, and cached vote history without connecting a wallet.
+- **Analytics** — explore DAO, governance, Guardian, participation, and delegatee data.
+- **Burns & Contributions** — follow CULT burns, contributions, supply changes, and return distributions.
+
+---
+
+## 🛡️ Safety & Data
+
+- Before using the transaction tools, switch your wallet to **Ethereum mainnet**.
+- Always verify the contract, method, amount, and network in your wallet before confirming.
+- Wallet collections, labels, descriptions, preferences, caches, and update backups remain in your browser unless you explicitly export them.
+- Historical dataset replacements are opt-in and backup-first when local data already exists.
+
+This is community software, not financial advice. Read the transaction your wallet presents and use it at your own risk.
+
+---
+
+## 🚀 Run Locally
+
+The Hub is a static site. There is no build step and no package installation.
+
+### Prerequisite
+
+Install [Python 3](https://www.python.org/downloads/) or use any static HTTP server.
+
+### Start the site
+
+```bash
+git clone https://github.com/wearecultdao/hub.git
+cd hub
+python3 -m http.server 8000
+```
+
+On Windows PowerShell, use `python -m http.server 8000` if `python3` is unavailable.
+
+Open [http://localhost:8000](http://localhost:8000), and stop the server with `Ctrl+C`.
+
+---
+
+## 🌐 Publish
+
+Deploy the repository root as a static site. All internal routes and assets are relative, so the Hub works from a GitHub Pages project path such as `/hub/`.
 
 ---
 
 ## 🤝 Contribute
 
-Contributions are welcome. Fork it. Improve it. Adapt it.  
-
+Fork it. Inspect it. Improve it. Adapt it.
 
 ---
 
 ## ❤️ Support
 
-If this hub empowers you, consider sending some fuel:  
-ETH: `0xB3b1185749dbE4c208c13cA1fa0E93A75C766066`    
-BTC: `bc1q7ud6qdw62wj5897r68eyk9m20h7wqgnvuju5nu`
+If this Hub empowers you, consider sending some fuel:
+
+- ETH: `0xB3b1185749dbE4c208c13cA1fa0E93A75C766066`
+- BTC: `bc1q7ud6qdw62wj5897r68eyk9m20h7wqgnvuju5nu`
 
 ---
 
 ## 📜 License
 
-Open-source. Free for all. Forever.  
-Released under the MIT License.
+Open-source. Free for all. Forever.
+
+Released under the [MIT License](LICENSE).

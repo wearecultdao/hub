@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "datasets": {
+    "portfolioPreset": {
+      "url": "portfolio/dao-funds-presets.json",
+      "version": "export:2026-07-11T19:43:40.893Z",
+      "snapshotDate": "2026-07-11"
+    },
+    "governanceHistory": {
+      "url": "governance/historical-cult-governance-data.json",
+      "version": 6,
+      "updatedAt": 1783969657299,
+      "exportedAt": 1783971003021,
+      "proposalCount": 193,
+      "score": 5805
+    }
+  }
+}

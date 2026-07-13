@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' https: data:; connect-src 'self' https://api.coingecko.com https://api.safe.global https://eth.blockscout.com https://base.blockscout.com https://polygon.blockscout.com https://cloudflare-eth.com https://ethereum.publicnode.com https://1rpc.io https://eth.drpc.org https://mainnet.base.org https://base.publicnode.com https://polygon-bor-rpc.publicnode.com; object-src 'none'; base-uri 'none'">
+  <title>Portfolio Tracker</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23ff5252'/%3E%3Ctext x='32' y='44' text-anchor='middle' font-family='Arial' font-size='38' font-weight='700' fill='white'%3EC%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=lp-exposure-116">
+  <link rel="stylesheet" href="../shared/site-nav.css?v=16">
+  <link rel="stylesheet" href="../shared/entry.css?v=45">
+  <link rel="stylesheet" href="../shared/address-identity.css?v=20">
+  <script src="../shared/theme-sync.js?v=1"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="site-title"><h1><a href="../" aria-label="CULT DAO Hub home">CULT DAO</a></h1></div>
+      <div class="header-actions">
+        <button id="shuffle-theme-btn" class="icon-button" title="Shuffle Experience" aria-label="Shuffle Experience"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M237.66,178.34a8,8,0,0,1,0,11.32l-24,24a8,8,0,0,1-11.32-11.32L212.69,192H200.94a72.12,72.12,0,0,1-58.59-30.15l-41.72-58.4A56.1,56.1,0,0,0,55.06,80H32a8,8,0,0,1,0-16H55.06a72.12,72.12,0,0,1,58.59,30.15l41.72,58.4A56.1,56.1,0,0,0,200.94,176h11.75l-10.35-10.34a8,8,0,0,1,11.32-11.32ZM143,107a8,8,0,0,0,11.16-1.86l1.2-1.67A56.1,56.1,0,0,1,200.94,80h11.75L202.34,90.34a8,8,0,0,0,11.32,11.32l24-24a8,8,0,0,0,0-11.32l-24-24a8,8,0,0,0-11.32,11.32L212.69,64H200.94a72.12,72.12,0,0,0-58.59,30.15l-1.2,1.67A8,8,0,0,0,143,107Zm-30,42a8,8,0,0,0-11.16,1.86l-1.2,1.67A56.1,56.1,0,0,1,55.06,176H32a8,8,0,0,0,0,16H55.06a72.12,72.12,0,0,0,58.59-30.15l1.2-1.67A8,8,0,0,0,113,149Z"/></svg></button>
+        <button id="theme" class="icon-button" title="Switch Mood" aria-label="Switch Mood"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M200.77,53.89A103.27,103.27,0,0,0,128,24h-1.07A104,104,0,0,0,24,128c0,43,26.58,79.06,69.36,94.17A32,32,0,0,0,136,192a16,16,0,0,1,16-16h46.21a31.81,31.81,0,0,0,31.2-24.88,104.43,104.43,0,0,0,2.59-24A103.28,103.28,0,0,0,200.77,53.89ZM213.81,147.7A15.89,15.89,0,0,1,198.21,160H152a32,32,0,0,0-32,32,16,16,0,0,1-21.31,15.07C62.49,194.3,40,164,40,128a88,88,0,0,1,87.09-88h.9a88.35,88.35,0,0,1,88,87.25A88.86,88.86,0,0,1,213.81,147.7ZM140,76a12,12,0,1,1-12-12A12,12,0,0,1,140,76ZM96,100A12,12,0,1,1,84,88,12,12,0,0,1,96,100Zm0,56a12,12,0,1,1-12-12A12,12,0,0,1,96,156Zm88-56a12,12,0,1,1-12-12A12,12,0,0,1,184,100Z"/></svg></button>
+        <select id="currency" aria-label="Fiat currency" hidden></select>
+        <div id="currency-widget" class="currency-widget">
+          <button id="currency-selector-btn" class="icon-button" type="button" title="Switch Currency" aria-label="Currency" aria-expanded="false">USD</button>
+          <div id="currency-dropdown" class="wallet-dropdown" aria-label="Currency"></div>
+        </div>
+        <div class="menu-widget">
+        <button id="menu-toggle" class="icon-button" title="Menu" aria-label="Menu" aria-expanded="false"><svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M224 128a8 8 0 0 1-8 8H40a8 8 0 0 1 0-16h176a8 8 0 0 1 8 8ZM40 72h176a8 8 0 0 0 0-16H40a8 8 0 0 0 0 16Zm176 112H40a8 8 0 0 0 0 16h176a8 8 0 0 0 0-16Z"/></svg></button>
+        <div id="menu" class="menu">
+          <button id="refresh" class="menu-item" type="button"><span class="menu-label">Refresh data</span><span class="menu-hint">Rescan the active wallet collection.</span></button>
+          <button id="add-wallet" class="menu-item"><span class="menu-label">Add wallet</span><span class="menu-hint">Add an address with a local label.</span></button>
+          <button id="export-data" class="menu-item"><span class="menu-label">Export wallet collections</span><span class="menu-hint">Choose one collection or export all collections together.</span></button>
+          <button id="import-data" class="menu-item"><span class="menu-label">Import local setup</span><span class="menu-hint">Restore an exported setup on this browser.</span></button>
+          <input id="import-data-file" type="file" accept="application/json,.json" hidden>
+          <button id="about-tracker" class="menu-item"><span class="menu-label">About this tracker</span><span class="menu-hint">Read how presets, personal collections, and local data work.</span></button>
+          <details class="menu-submenu">
+            <summary class="menu-item"><span class="menu-label">Restore</span><span class="menu-hint">Recover the wallet preset or hidden assets.</span></summary>
+            <div class="menu-submenu-items">
+              <button id="reset-wallets" class="menu-item"><span class="menu-label">Restore CULTDAO Funds</span><span class="menu-hint">Restore the published wallet preset.</span></button>
+              <button id="restore-hidden-assets" class="menu-item"><span class="menu-label">Restore hidden assets</span><span class="menu-hint" id="hidden-assets-hint">No manually hidden assets.</span></button>
+            </div>
+          </details>
+          <label class="menu-check"><input id="show-nfts" type="checkbox"><span><span class="menu-label">Show NFTs</span><span class="menu-hint">Hidden by default to keep the overview focused.</span></span></label>
+          <label class="menu-check"><input id="show-unpriced" type="checkbox"><span><span class="menu-label">Show unpriced tokens</span><span class="menu-hint">LP tokens remain visible regardless.</span></span></label>
+        </div>
+        </div>
+        <div class="wallet-widget" data-wallet-owner="shared">
+          <button id="connect-wallet-btn" type="button">Connect Wallet</button>
+          <div class="wallet-dropdown" aria-label="Wallet menu">
+            <button class="dropdown-item" type="button" data-shared-wallet-copy>Copy Address</button>
+            <a class="dropdown-item" href="#" target="_blank" rel="noopener noreferrer" data-shared-wallet-explorer>View on Etherscan</a>
+            <button class="dropdown-item" type="button" data-shared-wallet-disconnect>Disconnect</button>
+          </div>
+        </div>
+      </div>
+    </header>
+    <main>
+      <section class="hero hero-compact panel">
+        <label id="hero-wallet-set-switch" class="hero-wallet-set-switch" hidden><span>Collection</span><select id="hero-wallet-set-select" aria-label="Quick switch wallet collection"></select></label>
+        <span id="status" class="hero-update-status">Ready to scan public RPCs.</span>
+        <div class="hero-total"><div class="hero-total-copy"><span class="label">Total tracked value</span><strong id="total-value">—</strong><small id="total-meta">13 wallets · 3 networks</small><small class="hero-safe-line"><span id="safe-count">—</span> Safes detected</small><span id="safe-meta" hidden>Checking contracts…</span></div><div class="portfolio-viz"><button id="portfolio-donut" class="portfolio-donut" type="button" aria-label="Portfolio composition. Select Assets or Wallets below."><span id="portfolio-donut-label">Assets</span></button><div class="portfolio-viz-toggle" role="group" aria-label="Portfolio composition"><button type="button" data-donut-mode="assets" class="active">Assets</button><button type="button" data-donut-mode="wallets">Wallets</button></div><div id="portfolio-donut-tooltip" class="portfolio-donut-tooltip" hidden></div></div><div class="treasury-capacity-viz"><div id="treasury-capacity-donut" class="treasury-capacity-donut" role="img" aria-label="Treasury CULT value against 15.5 ETH proposal capacity"><span><b id="treasury-capacity-value">—</b><small>of 15.5 ETH</small></span></div><strong>Treasury value</strong><small><span id="treasury-cult-balance">— CULT</span><br>Proposal-capacity reference</small></div></div>
+        <button id="overview-palette-swap" class="overview-palette-swap" type="button" title="Switch overview colors" aria-label="Switch overview colors"><svg viewBox="0 0 256 256" aria-hidden="true"><path d="M237.66 178.34a8 8 0 0 1 0 11.32l-24 24a8 8 0 0 1-11.32-11.32L212.69 192h-11.75a72.12 72.12 0 0 1-58.59-30.15l-41.72-58.4A56.1 56.1 0 0 0 55.06 80H32a8 8 0 0 1 0-16h23.06a72.12 72.12 0 0 1 58.59 30.15l41.72 58.4A56.1 56.1 0 0 0 200.94 176h11.75l-10.35-10.34a8 8 0 0 1 11.32-11.32ZM143 107a8 8 0 0 0 11.16-1.86l1.2-1.67A56.1 56.1 0 0 1 200.94 80h11.75l-10.35 10.34a8 8 0 0 0 11.32 11.32l24-24a8 8 0 0 0 0-11.32l-24-24a8 8 0 0 0-11.32 11.32L212.69 64h-11.75a72.12 72.12 0 0 0-58.59 30.15l-1.2 1.67A8 8 0 0 0 143 107Zm-30 42a8 8 0 0 0-11.16 1.86l-1.2 1.67A56.1 56.1 0 0 1 55.06 176H32a8 8 0 0 0 0 16h23.06a72.12 72.12 0 0 0 58.59-30.15l1.2-1.67A8 8 0 0 0 113 149Z"/></svg></button>
+      </section>
+
+      <details class="tool-details overview-details" open>
+        <summary><h2>View Your Assets</h2></summary>
+        <section class="overview-section panel">
+          <details class="overview-assets-block" open><summary><h3>Assets</h3></summary><div class="overview-assets-toolbar"><label>Hide assets below <strong id="asset-threshold-label">$1.00</strong><input id="asset-threshold" type="range" min="0" max="8" step="1" value="3"></label><small id="asset-threshold-count">0 shown</small></div><div id="overview-asset-list" class="overview-asset-list"><p class="empty">No assets loaded yet.</p></div></details>
+          <details class="overview-metrics-block"><summary><h3>Portfolio totals</h3></summary><div class="info-grid">
+            <div class="info-item"><h3>Ethereum</h3><span id="overview-ethereum" class="value">—</span></div>
+            <div class="info-item"><h3>Base</h3><span id="overview-base" class="value">—</span></div>
+            <div class="info-item"><h3>Polygon</h3><span id="overview-polygon" class="value">—</span></div>
+            <div class="info-item"><h3>Native Assets</h3><span id="overview-native" class="value">—</span></div>
+            <div class="info-item"><h3>Tokens</h3><span id="overview-tokens" class="value">—</span></div>
+            <div class="info-item"><h3>LP Positions</h3><span id="overview-lp" class="value">—</span></div>
+            <div class="info-item"><h3>Visible / Priced Assets</h3><span class="value"><span id="overview-assets">—</span> / <span id="priced-assets">—</span></span></div>
+            <div class="info-item"><h3>Unpriced LPs</h3><span id="overview-unpriced" class="value">—</span></div>
+            <div class="info-item empty-wallet-summary"><h3>Empty / Unpriced Wallets</h3><span id="overview-empty-wallets" class="value">—</span><small id="overview-empty-wallet-links">—</small></div>
+          </div></details>
+        </section>
+      </details>
+
+      <details class="tool-details" open>
+        <summary><h2>Manage Your Wallets &amp; Collections</h2></summary>
+        <section class="wallet-section panel">
+          <details class="wallet-subtool wallet-collections-tool">
+            <summary><span><strong>Manage wallet collections</strong><small>Create, edit, switch, and update separate wallet collections.</small></span></summary>
+            <div class="wallet-set-bar"><div class="wallet-set-copy"><strong>Wallet collections</strong><p><b id="dao-preset-summary">CULTDAO Funds is a one-time historical snapshot and remains editable.</b> <span id="dao-preset-context">All collections are stored locally and need your curation.</span></p></div><div class="wallet-set-controls"><label><span>Viewing</span><select id="wallet-set-select" aria-label="Active wallet collection"></select></label><div class="wallet-set-actions"><button id="dao-preset-update" type="button" hidden>Update preset</button><button id="new-wallet-set" type="button">+ New collection</button><button id="rename-wallet-set" type="button">Edit</button><button id="delete-wallet-set" type="button">Delete</button></div></div></div>
+          </details>
+          <details class="wallet-subtool wallet-watchlist-tool">
+            <summary><span><strong>Update local watchlist</strong><small>Add tracked wallets and scan missing token contracts.</small></span></summary>
+            <div class="wallet-setup">
+              <section class="track-wallet wallet-track" aria-labelledby="track-title"><div><p class="eyebrow">Local watchlist</p><h2 id="track-title">Track wallets</h2><p>Paste one address, ENS name, or several addresses separated by commas or semicolons.</p></div><div class="input-with-button"><input id="track-wallet-input" autocomplete="off" placeholder="0x… or name.eth"><button id="track-wallet-button">Add</button></div></section>
+              <section class="toolbar wallet-scope-toolbar">
+                <div class="wallet-scope-group"><span class="wallet-control-label">Asset networks</span><div class="segmented" id="chain-filter" aria-label="Asset network filter"><button class="active" data-chain="all">All</button><button data-chain="ethereum">Ethereum</button><button data-chain="base">Base</button><button data-chain="polygon">Polygon</button></div></div>
+                <div class="manual-token-group"><span class="wallet-control-label">Manual token scan <small>Optional · add a missing or hidden token</small></span><div class="manual-token-control"><input id="manual-token-address" type="text" autocomplete="off" spellcheck="false" placeholder="Token contract address 0x…"><button id="manual-token-scan" type="button">Scan token</button><small id="manual-token-scope">All networks</small></div></div>
+              </section>
+            </div>
+          </details>
+          <div class="wallet-controls"><div class="wallet-overview-toolbar overview-assets-toolbar"><label>Hide wallets below <strong id="threshold-label">$0.00</strong><input id="threshold" type="range" min="0" max="8" step="1" value="0"></label><small id="wallet-threshold-count">0 shown</small></div><label class="search wallet-search" aria-label="Filter wallets"><span class="wallet-search-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m15.5 15.5 5 5"></path></svg></span><input id="search" type="search" placeholder="Filter wallets, labels or tokens"></label></div>
+          <div id="wallets" class="wallet-grid"></div>
+        </section>
+      </details>
+    </main>
+    <footer class="site-footer"><strong>Community-built for The Many.</strong><nav aria-label="Source links"><a class="footer-primary" href="https://github.com/wearecultdao" target="_blank" rel="noopener">GitHub</a><a href="https://github.com/wearecultdao/portfoliotracker" target="_blank" rel="noopener">Portfolio Tracker</a><a href="https://github.com/wearecultdao/hub" target="_blank" rel="noopener">Hub</a><a href="https://github.com/wearecultdao/burntracker" target="_blank" rel="noopener">Burntracker</a><a href="https://github.com/wearecultdao/governance-dashboard" target="_blank" rel="noopener">Governance</a></nav></footer>
+  </div>
+
+  <dialog id="wallet-dialog">
+    <form method="dialog" id="wallet-form">
+      <h2>Add wallet</h2>
+      <label>Address<input id="new-address" required placeholder="0x…" autocomplete="off"></label>
+      <label>Label<input id="new-label" maxlength="60" placeholder="Optional local label"></label>
+      <label>Note<textarea id="new-note" maxlength="240" placeholder="Optional description"></textarea></label>
+      <div class="dialog-actions"><button value="cancel">Cancel</button><button id="save-wallet" value="default">Add wallet</button></div>
+    </form>
+  </dialog>
+  <dialog id="wallet-edit-dialog">
+    <form id="wallet-edit-form">
+      <h2>Edit wallet</h2>
+      <p id="wallet-edit-address" class="dialog-wallet-address"></p>
+      <label>Name<input id="edit-wallet-label" maxlength="60" placeholder="Optional local wallet name"></label>
+      <label>Description<textarea id="edit-wallet-note" maxlength="240" placeholder="Optional description shown on the wallet card"></textarea></label>
+      <div class="dialog-actions"><button id="cancel-wallet-edit" type="button">Cancel</button><button type="submit">Save</button></div>
+    </form>
+  </dialog>
+  <dialog id="owner-label-dialog">
+    <form id="owner-label-form">
+      <h2>Label Safe owner</h2>
+      <p id="owner-label-address" class="dialog-wallet-address"></p>
+      <label>Local label<input id="owner-label-input" maxlength="60" placeholder="Treasury signer, contributor, team…"></label>
+      <p class="dialog-help">Saved locally. ENS and the full address remain available in the tooltip.</p>
+      <div class="dialog-actions"><button id="cancel-owner-label" type="button">Cancel</button><button id="remove-owner-label" class="danger-button" type="button">Remove label</button><button type="submit">Save</button></div>
+    </form>
+  </dialog>
+  <dialog id="wallet-set-dialog">
+    <form id="wallet-set-form">
+      <h2 id="wallet-set-dialog-title">New wallet collection</h2>
+      <label>Name<input id="wallet-set-name" maxlength="40" required placeholder="Personal"></label>
+      <label class="dialog-check"><input id="wallet-set-dialog-treasury" type="checkbox"><span>Show DAO treasury in this set</span></label>
+      <label class="dialog-check"><input id="wallet-set-dialog-private" type="checkbox"><span>Keep this collection private</span></label>
+      <p class="dialog-help">Private collections stay out of Hub cards and all-collections exports. Wallet details edited here stay collection-only, while shared labels may still appear inside it. You can still export this collection by itself.</p>
+      <div class="dialog-actions"><button id="cancel-wallet-set" type="button">Cancel</button><button type="submit">Save collection</button></div>
+    </form>
+  </dialog>
+  <dialog id="export-data-dialog">
+    <form id="export-data-form">
+      <h2>Export wallet collections</h2>
+      <label>Include<select id="export-data-scope"></select></label>
+      <p class="dialog-help">All-collections exports omit private collections. A private collection can still be selected and exported by itself. The file includes its wallet labels plus your shared owner labels and hidden-asset list, and can be imported on another browser. An export containing CULTDAO Funds can also be renamed to <code>dao-funds-presets.json</code> and published beside this site.</p>
+      <div class="dialog-actions"><button id="cancel-export-data" type="button">Cancel</button><button type="submit">Export</button></div>
+    </form>
+  </dialog>
+  <dialog id="dao-preset-update-dialog">
+    <form id="dao-preset-update-form">
+      <h2>CULTDAO Funds snapshot update</h2>
+      <p id="dao-preset-update-copy" class="dialog-help"></p>
+      <p class="dialog-help">A complete JSON backup downloads before the update. Your local wallet names, descriptions, Safe-owner labels, and wallets you added manually will be kept. The preset's curated hidden-asset list will be applied.</p>
+      <div class="dialog-actions"><button id="dismiss-dao-preset-update" type="button">Not now</button><button type="submit">Back up &amp; update</button></div>
+    </form>
+  </dialog>
+  <dialog id="first-visit-dialog" class="first-visit-dialog">
+    <form>
+      <h2>Welcome to Portfolio Tracker</h2>
+      <p class="dialog-help">A read-only overview for DAO-linked or personal wallet collections.</p>
+      <ul class="first-visit-points">
+        <li><strong>Read-only portfolio.</strong> The shared header can remember your wallet session, but this tracker never signs transactions or moves funds.</li>
+        <li><strong>CULTDAO Funds is a historical preset.</strong> It remains editable and needs user curation.</li>
+        <li><strong>Personal use is supported.</strong> Create separate collections for any wallets you want to follow.</li>
+        <li><strong>Your setup stays in this browser.</strong> Export collections to back them up or move them to another device.</li>
+      </ul>
+      <p class="dialog-help">Values come from public data sources and are informational, not authoritative accounting.</p>
+      <div class="dialog-actions"><button id="acknowledge-first-visit" type="button">Start exploring</button></div>
+    </form>
+  </dialog>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script src="../shared/delegation-status.js?v=2"></script>
+  <script src="../shared/governance-live-state.js?v=4"></script>
+  <script src="../shared/wallet-structural-state.js?v=1"></script>
+  <script src="../shared/network-summary.js?v=1"></script>
+  <script src="app.js?v=collection-privacy-1"></script>
+  <script src="../shared/historical-data-updates.js?v=1"></script>
+  <script src="../shared/header-shell.js?v=7"></script>
+  <script src="../shared/connected-delegation-probe.js?v=4"></script>
+  <script src="../shared/section-launcher.js?v=11"></script>
+  <script src="../shared/entry-metrics.js?v=19"></script>
+  <script src="../shared/section-summary-cache.js?v=4"></script>
+  <script src="../shared/address-identity.js?v=4"></script>
+  <script src="../shared/address-identity-ui.js?v=23"></script>
+</body>
+</html>

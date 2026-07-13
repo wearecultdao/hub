@@ -1,5 +1,5 @@
 /* ============================================================
-   CULT DAO Hub — v1.0.0 — 2025-08-23
+   CULT DAO Hub — v2.0.0 — 2026-07-13
    Developed by fl0ri0 (github.com/fl0ri0)
    Gifted to the CULT DAO community — published under github.com/wearecultdao/hub
    Licensed under MIT
@@ -454,3 +454,7 @@ details[open] > summary::after {
 .btnD { background: var(--color-details); }
 .wallet-dropdown { background-color: var(--wallet-dropdown-bg); }
 .ui-section { backdrop-filter: var(--ui-section-blur); }
+.voting-readiness { display: inline; width: auto; padding: 0; border: 0; background: transparent; font: 600 .9rem var(--font-mono); }
+.readiness-ready, .readiness-guardian { color: var(--color-green) !important; }
+.readiness-needs-delegation, .readiness-delegated-elsewhere { color: var(--color-text) !important; }
+.readiness-not-eligible { color: var(--color-text-muted) !important; opacity: .72; font-weight: 500; }

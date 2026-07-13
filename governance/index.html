@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src 'self' https://rpc.mevblocker.io https://cloudflare-eth.com https://ethereum.publicnode.com https://1rpc.io https://eth.drpc.org; object-src 'none'; base-uri 'none';">
+    <title>CULT DAO | Analytics</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=delegatee-identity-1">
+    <link rel="stylesheet" href="../shared/site-nav.css?v=16">
+    <link rel="stylesheet" href="../shared/entry.css?v=45">
+    <link rel="stylesheet" href="../shared/address-identity.css?v=20">
+    <script src="../shared/theme-sync.js?v=1"></script>
+</head>
+<body>
+    <div id="checker-gate-overlay" class="checker-gate-overlay" role="dialog" aria-modal="true" aria-labelledby="checker-gate-title" aria-hidden="true">
+        <div class="checker-gate-modal">
+            <h4 id="checker-gate-title">Check at least one wallet delegation first</h4>
+            <p>Run the Delegation Checker once, then DAO and governance analytics unlock here. No wallet connection is needed.</p>
+            <div class="checker-gate-actions">
+                <button id="checker-gate-close" class="text-button checker-gate-close" type="button">Close</button>
+                <a class="text-button checker-gate-skip" href="../delegation/">Open Delegation</a>
+                <button id="checker-gate-skip" class="text-button checker-gate-skip" type="button">Skip at own risk</button>
+            </div>
+        </div>
+    </div>
+    <div class="container">
+        <header class="header">
+            <div class="site-title"><h1><a href="../" aria-label="CULT DAO Hub home">CULT DAO</a></h1></div>
+            <div class="header-actions">
+                <button id="shuffle-theme-btn" class="icon-button" type="button" title="Shuffle Experience" aria-label="Shuffle Experience">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+                        <path d="M237.66,178.34a8,8,0,0,1,0,11.32l-24,24a8,8,0,0,1-11.32-11.32L212.69,192H200.94a72.12,72.12,0,0,1-58.59-30.15l-41.72-58.4A56.1,56.1,0,0,0,55.06,80H32a8,8,0,0,1,0-16H55.06a72.12,72.12,0,0,1,58.59,30.15l41.72,58.4A56.1,56.1,0,0,0,200.94,176h11.75l-10.35-10.34a8,8,0,0,1,11.32-11.32ZM143,107a8,8,0,0,0,11.16-1.86l1.2-1.67A56.1,56.1,0,0,1,200.94,80h11.75L202.34,90.34a8,8,0,0,0,11.32,11.32l24-24a8,8,0,0,0,0-11.32l-24-24a8,8,0,0,0-11.32,11.32L212.69,64H200.94a72.12,72.12,0,0,0-58.59,30.15l-1.2,1.67A8,8,0,0,0,143,107Zm-30,42a8,8,0,0,0-11.16,1.86l-1.2,1.67A56.1,56.1,0,0,1,55.06,176H32a8,8,0,0,0,0,16H55.06a72.12,72.12,0,0,0,58.59-30.15l1.2-1.67A8,8,0,0,0,113,149Z"/>
+                    </svg>
+                </button>
+                <button id="theme-toggle" class="icon-button" type="button" title="Switch Mood" aria-label="Switch Mood">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+                        <path d="M200.77,53.89A103.27,103.27,0,0,0,128,24h-1.07A104,104,0,0,0,24,128c0,43,26.58,79.06,69.36,94.17A32,32,0,0,0,136,192a16,16,0,0,1,16-16h46.21a31.81,31.81,0,0,0,31.2-24.88,104.43,104.43,0,0,0,2.59-24A103.28,103.28,0,0,0,200.77,53.89ZM213.81,147.7A15.89,15.89,0,0,1,198.21,160H152a32,32,0,0,0-32,32,16,16,0,0,1-21.31,15.07C62.49,194.3,40,164,40,128a88,88,0,0,1,87.09-88h.9a88.35,88.35,0,0,1,88,87.25A88.86,88.86,0,0,1,213.81,147.7ZM140,76a12,12,0,1,1-12-12A12,12,0,0,1,140,76ZM96,100A12,12,0,1,1,84,88,12,12,0,0,1,96,100Zm0,56a12,12,0,1,1-12-12A12,12,0,0,1,96,156Zm88-56a12,12,0,1,1-12-12A12,12,0,0,1,184,100Z"/>
+                    </svg>
+                </button>
+                <div id="currency-widget" class="currency-widget">
+                    <button id="currency-selector-btn" class="icon-button" type="button" title="Switch Currency" aria-label="Currency" aria-expanded="false">USD</button>
+                    <div id="currency-dropdown" class="wallet-dropdown" aria-label="Currency"></div>
+                </div>
+                <div class="menu-widget">
+                    <button id="menu-toggle" class="icon-button" type="button" title="Menu" aria-label="Menu" aria-expanded="false">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+                            <path d="M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128ZM40,72H216a8,8,0,0,0,0-16H40a8,8,0,0,0,0,16ZM216,184H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Z"/>
+                        </svg>
+                    </button>
+                    <div id="utility-menu" class="utility-menu" aria-label="Wasted votes menu">
+                        <button id="refresh-btn" class="menu-item menu-action" type="button"><span class="menu-label">Refresh data</span><span class="menu-hint">Update the current analytics view.</span></button>
+                        <label class="menu-field" for="proposal-scope" hidden>
+                            <span class="menu-label">Proposal window</span>
+                            <select id="proposal-scope">
+                                <option value="all" selected>All proposals</option>
+                                <option value="50">Latest 50</option>
+                                <option value="20">Latest 20</option>
+                            </select>
+                        </label>
+                        <a class="menu-item" href="https://etherscan.io/address/0x0831172b9b136813b0b35e7cc898b1398bb4d7e7" target="_blank" rel="noopener noreferrer">
+                            <span class="menu-label">Governor</span>
+                            <span class="menu-hint">Proposal and vote events.</span>
+                        </a>
+                        <a class="menu-item" href="https://etherscan.io/address/0x2d77b594b9bbaed03221f7c63af8c4307432daf1" target="_blank" rel="noopener noreferrer">
+                            <span class="menu-label">dCULT</span>
+                            <span class="menu-hint">Balances and delegation state.</span>
+                        </a>
+                        <a class="menu-item" href="https://etherscan.io/address/0x4aD54f4bb255529396Bd9506233d9Fb916A38975" target="_blank" rel="noopener noreferrer">
+                            <span class="menu-label">Batch votes</span>
+                            <span class="menu-hint">Gasless signature batches.</span>
+                        </a>
+                        <a class="menu-item" href="../delegation/">
+                            <span class="menu-label">Delegation checker</span>
+                            <span class="menu-hint">Check wallets without connecting.</span>
+                        </a>
+                        <details class="menu-submenu">
+                            <summary class="menu-item"><span class="menu-label">Restore</span><span class="menu-hint">Recover bundled history or rebuild live indexes.</span></summary>
+                            <div class="menu-submenu-items">
+                                <button id="restore-historical-data-btn" class="menu-item menu-action" type="button">
+                                    <span class="menu-label">Restore historical data</span>
+                                    <span class="menu-hint">Back up all local JSON, then reload the bundled governance dataset.</span>
+                                </button>
+                                <button id="reset-cache-btn" class="menu-item menu-action" type="button">
+                                    <span class="menu-label">Rebuild index</span>
+                                    <span class="menu-hint">Clear local cache and rescan from chain data.</span>
+                                </button>
+                            </div>
+                        </details>
+                        <button id="export-cache-btn" class="menu-item menu-action" type="button">
+                            <span class="menu-label">Export static dataset</span>
+                            <span class="menu-hint">Download historical-cult-governance-data.json.</span>
+                        </button>
+                        <button id="public-rpc-btn" class="menu-item menu-action" type="button">
+                            <span class="menu-label">Try public RPC</span>
+                            <span class="menu-hint">Fallback only. Wallet RPC is cleaner.</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="wallet-widget" data-wallet-owner="governance">
+                    <button id="connect-wallet-btn" class="text-button" type="button">Connect Wallet</button>
+                    <div id="wallet-dropdown" class="wallet-dropdown" aria-label="Wallet menu">
+                        <button id="copy-address-btn" class="dropdown-item" type="button">Copy Address</button>
+                        <a id="etherscan-link" href="#" target="_blank" rel="noopener noreferrer" class="dropdown-item">View on Etherscan</a>
+                        <button id="disconnect-btn" class="dropdown-item" type="button">Disconnect</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+        <main class="dapp-content">
+            <details id="delegation-checker-section" class="tool-details checker-embed-details" hidden>
+                <summary><h2>Delegation Checker</h2></summary>
+                <div class="tool-details-content checker-embed-content">
+                    <iframe
+                        class="checker-embed-frame"
+                        src="delegation-checker-embed.html"
+                        title="Delegation Checker"
+                        loading="lazy"
+                        scrolling="no"
+                    ></iframe>
+                </div>
+            </details>
+            <details class="tool-details visuals-details" open>
+                <summary><h2>DAO &amp; Governance Analytics</h2></summary>
+                <div class="tool-details-content">
+                    <details class="ui-section visual-chart-section visual-chart-details" open>
+                        <summary class="visual-chart-summary" id="governance-snapshot-title">Current Governance State</summary>
+                        <div id="governance-snapshot" class="governance-snapshot" aria-label="Current governance state">
+                            <p class="empty-state">No governance snapshot data yet.</p>
+                        </div>
+                    </details>
+
+                    <details class="ui-section visual-chart-section visual-chart-details" open>
+                        <summary class="visual-chart-summary" id="cult-supply-visual-title">CULT Supply Distribution</summary>
+                        <div id="cult-supply-chart" class="source-chart" aria-label="CULT supply distribution">
+                            <p class="empty-state">Connect a wallet or public RPC to build CULT supply history.</p>
+                        </div>
+                    </details>
+
+                    <details class="ui-section visual-chart-section visual-chart-details" open>
+                        <summary class="visual-chart-summary" id="voting-power-visual-title">Voting Power Sources</summary>
+                        <div id="voting-power-chart" class="source-chart" aria-label="Voting power by proposal or cumulative">
+                            <p class="empty-state">No voting power data yet.</p>
+                        </div>
+                    </details>
+
+                    <details class="ui-section visual-chart-section visual-chart-details" open>
+                        <summary class="visual-chart-summary" id="missed-power-visual-title">Missed Voting Power Sources</summary>
+                        <div id="wasted-source-chart" class="source-chart" aria-label="Missed voting power by proposal or cumulative">
+                            <p class="empty-state">No wasted vote source data yet.</p>
+                        </div>
+                    </details>
+
+                    <details class="ui-section visual-chart-section visual-chart-details" open>
+                        <summary class="visual-chart-summary" id="repeat-failure-visual-title">Repeat Failure Concentration</summary>
+                        <div id="repeat-failure-chart" class="source-chart" aria-label="Repeat versus one-time wasted vote concentration">
+                            <p class="empty-state">No repeat failure data yet.</p>
+                        </div>
+                    </details>
+
+                    <details class="ui-section visual-chart-section visual-chart-details" open>
+                        <summary class="visual-chart-summary" id="participation-visual-title">Participating vs Ready Participation</summary>
+                        <div id="participation-trend-chart" class="source-chart" aria-label="Ready versus staked participation trend">
+                            <p class="empty-state">No participation trend data yet.</p>
+                        </div>
+                    </details>
+
+                    <details class="ui-section visual-chart-section visual-chart-details" open>
+                        <summary class="visual-chart-summary" id="composition-visual-title">Proposal Voting Power Composition</summary>
+                        <div id="proposal-composition-chart" class="source-chart proposal-composition-chart" aria-label="Per-proposal voting power composition">
+                            <p class="empty-state">No proposal composition data yet.</p>
+                        </div>
+                    </details>
+
+                    <details class="ui-section visual-chart-section visual-chart-details" open>
+                        <summary class="visual-chart-summary" id="delegate-heatmap-visual-title">Delegatee Absence Heatmap</summary>
+                        <div id="delegate-absence-heatmap" class="source-chart" aria-label="Delegatee absence heatmap">
+                            <p class="empty-state">No delegatee absence heatmap data yet.</p>
+                        </div>
+                    </details>
+
+                    <details class="ui-section visual-chart-section visual-chart-details" open>
+                        <summary class="visual-chart-summary" id="delegatee-scatter-visual-title">Delegatee Reliability Scatter</summary>
+                        <div id="delegatee-reliability-scatter" class="source-chart" aria-label="Delegatee reliability scatter">
+                            <p class="empty-state">No delegatee reliability scatter data yet.</p>
+                        </div>
+                    </details>
+
+                    <details class="ui-section visual-chart-section visual-chart-details">
+                        <summary class="visual-chart-summary" id="delegatee-reliability-visual-title">Delegatee Reliability Ranking</summary>
+                        <div id="delegatee-reliability-chart" class="source-chart" aria-label="Delegatee reliability ranking">
+                            <p class="empty-state">No delegatee reliability data yet.</p>
+                        </div>
+                    </details>
+
+                    <details class="ui-section visual-chart-section visual-chart-details">
+                        <summary class="visual-chart-summary" id="outcome-risk-visual-title">Proposal Outcome Risk Map</summary>
+                        <div id="proposal-risk-chart" class="source-chart" aria-label="Proposal yes, no, wasted, and absent power risk map">
+                            <p class="empty-state">No proposal risk data yet.</p>
+                        </div>
+                    </details>
+
+                </div>
+            </details>
+            <details class="tool-details proposals-tool-details" hidden>
+                <summary><h2>Past Proposals</h2></summary>
+                <div class="tool-details-content">
+                    <section class="ui-section proposals-section" aria-labelledby="proposal-list-title">
+                        <div class="section-heading">
+                            <h4 id="proposal-list-title">Past Proposals</h4>
+                        </div>
+                        <div class="proposal-search-field">
+                            <label for="proposal-title-search">Search Past Proposals</label>
+                            <input id="proposal-title-search" type="search" placeholder="Search by title...">
+                        </div>
+                        <div class="proposal-filter-bar" aria-label="Proposal filters">
+                            <label class="checkbox-control">
+                                <input id="filter-executed-only" type="checkbox">
+                                <span>Show Executed Only</span>
+                            </label>
+                            <label class="checkbox-control">
+                                <input id="filter-defeated-only" type="checkbox">
+                                <span>Show Defeated Only</span>
+                            </label>
+                            <label class="checkbox-control">
+                                <input id="filter-hide-canceled" type="checkbox" checked>
+                                <span>Hide Cancelled</span>
+                            </label>
+                        </div>
+                        <div id="proposal-list" class="proposal-list">
+                            <p class="empty-state">...</p>
+                        </div>
+                        <div class="proposal-list-footer">
+                            <span id="proposal-visible-count" class="event-meta">...</span>
+                            <button id="show-more-proposals" class="toggle-button" type="button">Load Older Proposals</button>
+                        </div>
+                    </section>
+                </div>
+            </details>
+            <details class="tool-details guardians-tool-details">
+                <summary><h2>Guardians Overview</h2></summary>
+                <div class="tool-details-content">
+                    <section class="ui-section guardians-section" aria-labelledby="guardians-overview-title">
+                        <div class="section-heading">
+                            <div>
+                                <h4 id="guardians-overview-title">Guardians Overview</h4>
+                                <p id="guardians-overview-status" class="status-line">Current contract guardian slots compared with reconstructed top-50 dCULT holders.</p>
+                            </div>
+                            <button id="refresh-guardians-overview" class="toggle-button" type="button">Refresh Guardians</button>
+                        </div>
+                        <div id="guardians-overview" class="guardians-overview">
+                            <p class="empty-state">No guardian overview data yet.</p>
+                        </div>
+                    </section>
+                </div>
+            </details>
+            <details class="tool-details pre-retirement-tool-details" hidden>
+                <summary><h2>Pre-retirement</h2></summary>
+                <div class="tool-details-content">
+                    <section class="ui-section hero-section" aria-labelledby="overview-title">
+                <div class="section-heading">
+                    <div>
+                        <h4 id="overview-title">Zero-Weight Ballots</h4>
+                        <p id="status-line" class="status-line">...</p>
+                    </div>
+                    <span id="latest-block" class="index-status">Idle</span>
+                </div>
+
+                <div class="info-grid overview-grid">
+                    <div class="info-item wide-metric">
+                        <h3>Potential Wasted dCULT</h3>
+                        <span id="total-wasted" class="value main-value">...</span>
+                    </div>
+                    <div class="info-item">
+                        <h3>Wasted For</h3>
+                        <span id="wasted-for" class="value value-for">...</span>
+                    </div>
+                    <div class="info-item">
+                        <h3>Wasted Against</h3>
+                        <span id="wasted-against" class="value value-against">...</span>
+                    </div>
+                    <div class="info-item">
+                        <h3>Wasted Abstain</h3>
+                        <span id="wasted-abstain" class="value">...</span>
+                    </div>
+                    <div class="info-item">
+                        <h3>Actual Votes Cast</h3>
+                        <span id="actual-votes" class="value">...</span>
+                    </div>
+                    <div class="info-item">
+                        <h3>Snapshot dCULT Supply</h3>
+                        <span id="snapshot-dcult-supply" class="value">...</span>
+                    </div>
+                    <div class="info-item">
+                        <h3>Protocol-Ineligible dCULT</h3>
+                        <span id="guardian-dcult-supply" class="value">...</span>
+                    </div>
+                    <div class="info-item">
+                        <h3>Token Turnout</h3>
+                        <span id="voter-turnout" class="value">...</span>
+                    </div>
+                    <div class="info-item">
+                        <h3>Participating / Ready / Eligible Wallets</h3>
+                        <span id="wallet-turnout" class="value">...</span>
+                    </div>
+                    <div class="info-item">
+                        <h3>Aligned Delegated dCULT</h3>
+                        <span id="aligned-delegated" class="value value-for">...</span>
+                    </div>
+                    <div class="info-item">
+                        <h3>Misaligned Delegated dCULT</h3>
+                        <span id="misaligned-delegated" class="value value-misaligned">...</span>
+                    </div>
+                    <div class="info-item">
+                        <h3>No Voting Rights Waste</h3>
+                        <span id="no-rights-waste" class="value">...</span>
+                    </div>
+                    <div class="info-item">
+                        <h3>Delegatee Did Not Vote</h3>
+                        <span id="delegate-missed-waste" class="value">...</span>
+                    </div>
+                    <div class="info-item">
+                        <h3>Delegatee Duty Voted</h3>
+                        <span id="delegate-duty-wallets" class="value">...</span>
+                    </div>
+                    <div class="info-item">
+                        <h3>Absent Delegatee Power</h3>
+                        <span id="delegate-duty-absent-power" class="value">...</span>
+                    </div>
+                    <div class="info-item">
+                        <h3>Wasting / Voting Wallets</h3>
+                        <span id="wasting-wallets" class="value">...</span>
+                    </div>
+                    <div class="info-item">
+                        <h3>Repeat / One-Time Fails</h3>
+                        <span id="repeat-wasted-wallets" class="value">...</span>
+                    </div>
+                    <div class="info-item">
+                        <h3>Zero / Voting Wallets</h3>
+                        <span id="zero-wallets" class="value">...</span>
+                    </div>
+                    <div class="info-item">
+                        <h3>Net Margin Exceeded</h3>
+                        <span id="swing-flags" class="value">...</span>
+                    </div>
+                    <div class="info-item">
+                        <h3>Passed/Defeated Margin Exceeded</h3>
+                        <span id="outcome-swing-flags" class="value">...</span>
+                    </div>
+                    <div class="info-item">
+                        <h3>Absent Delegatee Impact</h3>
+                        <span id="delegate-duty-impact" class="value">...</span>
+                    </div>
+                    <div class="info-item">
+                        <h3>Proposals Indexed</h3>
+                        <span id="proposal-count" class="value">...</span>
+                    </div>
+                </div>
+
+            </section>
+            <section class="ui-section averages-section" aria-labelledby="averages-title">
+                <div class="section-heading compact-heading">
+                    <h4 id="averages-title">Non-Canceled Averages</h4>
+                </div>
+                <div class="info-grid averages-grid">
+                    <div class="info-item"><h3>Avg For Votes</h3><span id="avg-for-votes" class="value value-for">...</span></div>
+                    <div class="info-item"><h3>Avg Against Votes</h3><span id="avg-against-votes" class="value value-against">...</span></div>
+                    <div class="info-item"><h3>Avg Margin</h3><span id="avg-margin" class="value">...</span></div>
+                    <div class="info-item"><h3>Avg Total Votes</h3><span id="avg-total-votes" class="value">...</span></div>
+                    <div class="info-item"><h3>Avg Snapshot dCULT</h3><span id="avg-snapshot-dcult-supply" class="value">...</span></div>
+                    <div class="info-item"><h3>Avg Protocol-Ineligible dCULT</h3><span id="avg-guardian-dcult-supply" class="value">...</span></div>
+                    <div class="info-item"><h3>Avg Token Turnout</h3><span id="avg-turnout" class="value">...</span></div>
+                    <div class="info-item"><h3>Avg Voting Wallets</h3><span id="avg-voting-wallets" class="value">...</span></div>
+                    <div class="info-item"><h3>Avg Ready Eligible Wallets</h3><span id="avg-ready-holder-wallets" class="value">...</span></div>
+                    <div class="info-item"><h3>Avg Eligible Holder Wallets</h3><span id="avg-holder-wallets" class="value">...</span></div>
+                    <div class="info-item"><h3>Avg Wallet Turnout</h3><span id="avg-wallet-turnout" class="value">...</span></div>
+                    <div class="info-item"><h3>Avg Voting Wallets (Last 10)</h3><span id="avg-voting-wallets-last10" class="value">...</span></div>
+                    <div class="info-item"><h3>Avg Wasting / Voting Wallets</h3><span id="avg-wasting-wallets" class="value">...</span></div>
+                    <div class="info-item"><h3>Avg Total Wasted</h3><span id="avg-wasted-total" class="value">...</span></div>
+                    <div class="info-item"><h3>Avg Misaligned Delegated</h3><span id="avg-misaligned-delegated" class="value value-misaligned">...</span></div>
+                    <div class="info-item"><h3>Avg No-Rights Waste</h3><span id="avg-no-rights-waste" class="value">...</span></div>
+                    <div class="info-item"><h3>Avg Delegatee No-Vote Waste</h3><span id="avg-delegate-missed-waste" class="value">...</span></div>
+                    <div class="info-item"><h3>Avg Delegatee Duty Voted</h3><span id="avg-delegate-duty-wallets" class="value">...</span></div>
+                    <div class="info-item"><h3>Avg Absent Delegatee Power</h3><span id="avg-delegate-duty-absent-power" class="value">...</span></div>
+                    <div class="info-item"><h3>Avg Wasted For</h3><span id="avg-wasted-for" class="value value-for">...</span></div>
+                    <div class="info-item"><h3>Avg Wasted Against</h3><span id="avg-wasted-against" class="value value-against">...</span></div>
+                </div>
+                    </section>
+
+                    <section class="ui-section delegatee-power-section" aria-labelledby="delegatee-power-title">
+                        <div class="section-heading">
+                            <div>
+                                <h4 id="delegatee-power-title">Delegatee Voting Power</h4>
+                                <p id="delegatee-power-status" class="status-line">Latest indexed proposal snapshot.</p>
+                            </div>
+                        </div>
+                        <div id="delegatee-power-list" class="delegatee-power-list">
+                            <p class="empty-state">...</p>
+                        </div>
+                    </section>
+                </div>
+            </details>
+        </main>
+        <footer class="site-footer"><strong>Community-built for The Many.</strong><nav aria-label="Source links"><a class="footer-primary" href="https://github.com/wearecultdao" target="_blank" rel="noopener">GitHub</a><a href="https://github.com/wearecultdao/portfoliotracker" target="_blank" rel="noopener">Portfolio Tracker</a><a href="https://github.com/wearecultdao/hub" target="_blank" rel="noopener">Hub</a><a href="https://github.com/wearecultdao/burntracker" target="_blank" rel="noopener">Burntracker</a><a href="https://github.com/wearecultdao/governance-dashboard" target="_blank" rel="noopener">Governance</a></nav></footer>
+    </div>
+
+    <script src="app.js?v=delegatee-identity-1"></script>
+    <script src="restore-historical-data.js?v=1"></script>
+    <script src="../shared/delegation-status.js?v=2"></script>
+    <script src="../shared/governance-live-state.js?v=4"></script>
+    <script src="../shared/wallet-structural-state.js?v=1"></script>
+    <script src="../shared/historical-data-updates.js?v=1"></script>
+    <script src="../shared/header-shell.js?v=7"></script>
+    <script src="../shared/connected-delegation-probe.js?v=4"></script>
+    <script src="../shared/section-launcher.js?v=11"></script>
+    <script src="../shared/entry-metrics.js?v=19"></script>
+    <script src="../shared/analytics-summary.js?v=2"></script>
+    <script src="../shared/address-identity.js?v=4"></script>
+    <script src="../shared/address-identity-ui.js?v=23"></script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src 'self' https://rpc.mevblocker.io https://cloudflare-eth.com https://ethereum.publicnode.com https://1rpc.io https://eth.drpc.org; object-src 'none'; base-uri 'none';">
+    <title>CULT DAO | Delegation Checker Embed</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=delegatee-identity-1">
+    <link rel="stylesheet" href="../shared/address-identity.css?v=20">
+</head>
+<body class="checker-embed-body">
+    <main class="checker-embed-page checker-content">
+        <section class="ui-section hero-section" aria-labelledby="checker-embed-title">
+            <div class="checker-form form-group full-width">
+                <label id="checker-embed-title" class="checker-label" for="wallet-input">Check Wallet(s)</label>
+                <div class="input-with-button">
+                    <input id="wallet-input" class="checker-input" type="text" spellcheck="false" placeholder="0x... or ENS name. Separated by ;">
+                    <button id="check-btn" class="text-button" type="button">Check</button>
+                    <button id="clear-btn" class="text-button secondary-button" type="button">Clear</button>
+                </div>
+                <small class="checker-helper">Check delegation status, voting rights, dCULT balance, and cached wasted votes for multiple wallets.</small>
+                <p id="checker-status" class="status-line checker-inline-status" hidden>Ready.</p>
+                <span id="provider-status" class="index-status" hidden>Public RPC</span>
+            </div>
+        </section>
+
+        <div id="answer-section" class="checker-verdict-wrap" hidden>
+            <div id="readiness-answer" class="checker-verdict-banner is-neutral" role="status" aria-live="polite"></div>
+            <details class="checker-aggregate-details">
+                <summary class="advanced-options-summary proposal-detail-summary">Show aggregate stats</summary>
+                <div class="info-grid">
+                    <div class="info-item"><h3>Wallets Checked</h3><span id="checked-count" class="value">0</span></div>
+                    <div class="info-item"><h3>Ready / Active Rights</h3><span id="ready-count" class="value">0</span></div>
+                    <div class="info-item"><h3>Needs Action</h3><span id="needs-action-count" class="value">0</span></div>
+                    <div class="info-item"><h3>No Voting Rights</h3><span id="no-power-count" class="value">0</span></div>
+                    <div class="info-item"><h3>Direct Vote-Attempt Waste</h3><span id="total-wasted-votes" class="value main-value">0 dCULT</span></div>
+                    <div class="info-item"><h3>No-Rights Vote Attempts</h3><span id="no-rights-waste" class="value">0 dCULT</span></div>
+                    <div class="info-item"><h3>Delegatee-Missed Vote Attempts</h3><span id="third-party-missed-waste" class="value">0 dCULT</span></div>
+                    <div class="info-item"><h3>Delegatee Duty Missed</h3><span id="delegate-duty-missed" class="value">0 dCULT</span></div>
+                </div>
+            </details>
+        </div>
+
+        <details id="results-section" class="checker-aggregate-details" hidden>
+            <summary id="results-title" class="advanced-options-summary proposal-detail-summary">Show checked wallet details</summary>
+            <div id="checker-results" class="checker-results">
+                <p class="empty-state">No wallets checked yet.</p>
+            </div>
+        </details>
+    </main>
+
+    <script src="../shared/governance-live-state.js?v=4"></script>
+    <script src="../shared/wallet-structural-state.js?v=1"></script>
+    <script src="delegation-checker.js?v=delegatee-identity-1"></script>
+    <script src="../shared/delegation-summary.js?v=2"></script>
+    <script src="../shared/address-identity.js?v=4"></script>
+    <script src="../shared/address-identity-ui.js?v=23"></script>
+</body>
+</html>

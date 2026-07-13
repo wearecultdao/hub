@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src 'self' https://rpc.mevblocker.io https://cloudflare-eth.com https://ethereum.publicnode.com https://1rpc.io https://eth.drpc.org; object-src 'none'; base-uri 'none';">
+    <title>CULT DAO | Delegation Checker</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=delegatee-identity-1">
+    <link rel="stylesheet" href="delegation-checker-shell.css">
+    <link rel="stylesheet" href="../shared/address-identity.css?v=20">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>CULT DAO</h1>
+            <div class="header-actions">
+                <button id="shuffle-theme-btn" class="icon-button" type="button" title="Shuffle Experience" aria-label="Shuffle Experience">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+                        <path d="M237.66,178.34a8,8,0,0,1,0,11.32l-24,24a8,8,0,0,1-11.32-11.32L212.69,192H200.94a72.12,72.12,0,0,1-58.59-30.15l-41.72-58.4A56.1,56.1,0,0,0,55.06,80H32a8,8,0,0,1,0-16H55.06a72.12,72.12,0,0,1,58.59,30.15l41.72,58.4A56.1,56.1,0,0,0,200.94,176h11.75l-10.35-10.34a8,8,0,0,1,11.32-11.32ZM143,107a8,8,0,0,0,11.16-1.86l1.2-1.67A56.1,56.1,0,0,1,200.94,80h11.75L202.34,90.34a8,8,0,0,0,11.32,11.32l24-24a8,8,0,0,0,0-11.32l-24-24a8,8,0,0,0-11.32,11.32L212.69,64H200.94a72.12,72.12,0,0,0-58.59,30.15l-1.2,1.67A8,8,0,0,0,143,107Zm-30,42a8,8,0,0,0-11.16,1.86l-1.2,1.67A56.1,56.1,0,0,1,55.06,176H32a8,8,0,0,0,0,16H55.06a72.12,72.12,0,0,0,58.59-30.15l1.2-1.67A8,8,0,0,0,113,149Z"/>
+                    </svg>
+                </button>
+                <button id="theme-toggle" class="icon-button" type="button" title="Switch Mood" aria-label="Switch Mood">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+                        <path d="M200.77,53.89A103.27,103.27,0,0,0,128,24h-1.07A104,104,0,0,0,24,128c0,43,26.58,79.06,69.36,94.17A32,32,0,0,0,136,192a16,16,0,0,1,16-16h46.21a31.81,31.81,0,0,0,31.2-24.88,104.43,104.43,0,0,0,2.59-24A103.28,103.28,0,0,0,200.77,53.89ZM213.81,147.7A15.89,15.89,0,0,1,198.21,160H152a32,32,0,0,0-32,32,16,16,0,0,1-21.31,15.07C62.49,194.3,40,164,40,128a88,88,0,0,1,87.09-88h.9a88.35,88.35,0,0,1,88,87.25A88.86,88.86,0,0,1,213.81,147.7ZM140,76a12,12,0,1,1-12-12A12,12,0,0,1,140,76ZM96,100A12,12,0,1,1,84,88,12,12,0,0,1,96,100Zm0,56a12,12,0,1,1-12-12A12,12,0,0,1,96,156Zm88-56a12,12,0,1,1-12-12A12,12,0,0,1,184,100Z"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <a class="governance-back-link" href="../delegation/">← Back to Delegation</a>
+
+        <main class="dapp-content checker-content">
+            <details class="tool-details" open>
+                <summary><h2 id="checker-title">Delegation Checker</h2></summary>
+                <div class="tool-details-content">
+            <section class="ui-section hero-section" aria-labelledby="checker-title">
+                <div class="checker-form form-group full-width">
+                    <label class="checker-label" for="wallet-input">Check Wallet(s)</label>
+                    <div class="input-with-button">
+                        <input id="wallet-input" class="checker-input" type="text" spellcheck="false" placeholder="0x... or ENS name. Separated by ;">
+                        <button id="check-btn" class="text-button" type="button">Check</button>
+                        <button id="clear-btn" class="text-button secondary-button" type="button">Clear</button>
+                    </div>
+                    <small class="checker-helper">Check delegation status, voting rights, dCULT balance, and cached wasted votes for multiple wallets.</small>
+                    <p id="checker-status" class="status-line checker-inline-status" hidden>Ready.</p>
+                    <span id="provider-status" class="index-status" hidden>Public RPC</span>
+                </div>
+            </section>
+
+            <div id="answer-section" class="checker-verdict-wrap" hidden>
+                <div id="readiness-answer" class="checker-verdict-banner is-neutral" role="status" aria-live="polite"></div>
+                <details class="checker-aggregate-details">
+                    <summary class="advanced-options-summary proposal-detail-summary">Show aggregate stats</summary>
+                    <div class="info-grid">
+                        <div class="info-item"><h3>Wallets Checked</h3><span id="checked-count" class="value">0</span></div>
+                        <div class="info-item"><h3>Ready / Active Rights</h3><span id="ready-count" class="value">0</span></div>
+                        <div class="info-item"><h3>Needs Action</h3><span id="needs-action-count" class="value">0</span></div>
+                        <div class="info-item"><h3>No Voting Rights</h3><span id="no-power-count" class="value">0</span></div>
+                        <div class="info-item"><h3>Direct Vote-Attempt Waste</h3><span id="total-wasted-votes" class="value main-value">0 dCULT</span></div>
+                        <div class="info-item"><h3>No-Rights Vote Attempts</h3><span id="no-rights-waste" class="value">0 dCULT</span></div>
+                        <div class="info-item"><h3>Delegatee-Missed Vote Attempts</h3><span id="third-party-missed-waste" class="value">0 dCULT</span></div>
+                        <div class="info-item"><h3>Delegatee Duty Missed</h3><span id="delegate-duty-missed" class="value">0 dCULT</span></div>
+                    </div>
+                </details>
+            </div>
+
+            <details id="results-section" class="checker-aggregate-details" hidden>
+                <summary id="results-title" class="advanced-options-summary proposal-detail-summary">Show checked wallet details</summary>
+                <div id="checker-results" class="checker-results">
+                    <p class="empty-state">No wallets checked yet.</p>
+                </div>
+            </details>
+                </div>
+            </details>
+        </main>
+    </div>
+
+    <script src="../shared/governance-live-state.js?v=4"></script>
+    <script src="../shared/wallet-structural-state.js?v=1"></script>
+    <script src="delegation-checker.js?v=delegatee-identity-1"></script>
+    <script src="../shared/delegation-summary.js?v=2"></script>
+    <script src="../shared/address-identity.js?v=4"></script>
+    <script src="../shared/address-identity-ui.js?v=23"></script>
+</body>
+</html>

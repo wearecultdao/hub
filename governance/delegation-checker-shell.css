@@ -1,0 +1,14 @@
+.governance-back-link {
+    display: inline-flex;
+    width: fit-content;
+    margin: 0 0 24px;
+    color: var(--color-muted);
+    font: 500 11px/1.2 var(--font-mono);
+    text-decoration: none;
+}
+
+.governance-back-link:hover,
+.governance-back-link:focus-visible {
+    color: var(--color-text);
+    text-decoration: underline;
+}

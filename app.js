@@ -1,5 +1,5 @@
 // ============================================================
-// CULT DAO Hub — v1.0.0 — 2025-08-23
+// CULT DAO Hub — v2.0.0 — 2026-07-13
 // Developed by fl0ri0 (github.com/fl0ri0)
 // Gifted to the CULT DAO community — published under github.com/wearecultdao/hub
 // Licensed under MIT
@@ -92,6 +92,42 @@ function processAlertQueue() {
 }
 function showCustomAlert(message) { alertQueue.push(message); processAlertQueue(); }
 function setMetric(id, value) { const el = document.getElementById(id); if (el) el.textContent = value; }
+function setVotingReadinessMetric(id, readiness) {
+    const el = document.getElementById(id);
+    if (!el || !readiness) return;
+    el.textContent = readiness.label;
+    el.classList.remove('readiness-ready', 'readiness-needs-delegation', 'readiness-delegated-elsewhere', 'readiness-not-eligible', 'readiness-guardian');
+    el.classList.add('voting-readiness', `readiness-${readiness.key}`);
+    const details = [readiness.currentState, readiness.nextStep && `Needed: ${readiness.nextStep}`];
+    if (readiness.key === 'delegated-elsewhere' && ethers.utils.isAddress(readiness.delegatee || '')) details.splice(1, 0, `Delegatee: ${ethers.utils.getAddress(readiness.delegatee)}`);
+    el.title = details.filter(Boolean).join('\n');
+}
+function publishConnectedDelegationReadiness(readiness, delegatee, isGuardian) {
+    if (!readiness || !userAddress) return;
+    window.CultGovernanceLiveState?.prime?.(userAddress, {
+        balance: userDcultBalanceRaw?.toString?.() || '0',
+        delegatee,
+        isGuardian: Boolean(isGuardian),
+    });
+    try {
+        localStorage.setItem('cultHubDelegationSummary:v1', JSON.stringify({
+            source: 'connected-wallet',
+            address: userAddress,
+            key: readiness.key,
+            label: readiness.compactLabel || readiness.label,
+            status: readiness.label,
+            currentState: readiness.currentState,
+            nextStep: readiness.nextStep,
+            balance: userDcultBalanceRaw?.toString?.() || '0',
+            delegatee,
+            isGuardian: Boolean(isGuardian),
+            updatedAt: Date.now(),
+        }));
+        window.dispatchEvent(new CustomEvent('cult-section-summary'));
+    } catch {
+        // The live Hub remains usable if browser storage is unavailable.
+    }
+}
 function isBatchApiAvailable() { return batchApiAvailable === true; }
 function getBatchApiNoticeContent() {
     return `<span>${BATCH_API_UNAVAILABLE_MESSAGE}</span><button type="button" class="batch-api-close-btn notice-close-btn" aria-label="Dismiss notice">×</button>`;
@@ -136,8 +172,10 @@ function showBatchApiNotice(notice) {
     notice.style.display = 'flex';
     notice.classList.add('is-visible');
 
-    const timeoutId = setTimeout(() => hideBatchApiNotice(notice, true), NOTICE_AUTOHIDE_MS);
-    batchApiNoticeTimeouts.set(notice, timeoutId);
+    if (notice.id !== 'delegation-batch-api-notice') {
+        const timeoutId = setTimeout(() => hideBatchApiNotice(notice, true), NOTICE_AUTOHIDE_MS);
+        batchApiNoticeTimeouts.set(notice, timeoutId);
+    }
 }
 function showVisibleBatchApiNotices() {
     document.querySelectorAll('.batch-api-notice').forEach(showBatchApiNotice);
@@ -273,9 +311,10 @@ async function fetchTrackedWalletData(address) {
         const dcultFormatted = parseFloat(ethers.utils.formatUnits(dcultBalanceRaw, 18));
         const pendingCult = parseFloat(ethers.utils.formatUnits(pendingRewardsRaw, 18));
         const delegationStatus = (delegatee.toLowerCase() === address.toLowerCase()) ? "Self-Delegated (Active)" : (delegatee === ethers.constants.AddressZero) ? "Not Delegated (Inactive)" : `Delegated to ${createAddressLink(delegatee)}`;
+        const votingReadiness = CultDelegationStatus.classify({ address, balance: dcultBalanceRaw.toString(), delegatee, isGuardian });
         const votingRights = isGuardian ? `<span class="value the-many">Guardian</span>` : dcultBalanceRaw.gt(0) ? `<span class="value the-many">The Many</span>` : "None (No dCULT)";
         const totalHoldings = cultFormatted + dcultFormatted + pendingCult;
-        return { address, cultBalance: cultFormatted, dcultBalance: dcultFormatted, totalHoldings, delegationStatus, votingRights };
+        return { address, cultBalance: cultFormatted, dcultBalance: dcultFormatted, totalHoldings, delegationStatus, votingReadiness, votingRights };
     } catch (error) {
         console.error(`Error fetching data for ${address}:`, error);
         return { address, cultBalance: "Error", dcultBalance: "Error", totalHoldings: "Error", delegationStatus: "Error", votingRights: "Error" };
@@ -311,6 +350,7 @@ async function renderTrackedWallets() {
         walletEl.innerHTML = DOMPurify.sanitize(`
             <div class="info-item"><h3>Wallet</h3><span class="value">${createAddressLink(walletData.address)}</span></div>
             <div class="info-item"><h3>Delegation Status</h3><span class="value">${walletData.delegationStatus}</span></div>
+            <div class="info-item"><h3>Voting Readiness</h3><span class="value voting-readiness readiness-${walletData.votingReadiness?.key || 'not-eligible'}">${walletData.votingReadiness?.label || 'Unavailable'}</span></div>
             <div class="info-item"><h3>Voting Rights</h3>${walletData.votingRights}</div>
             <div class="info-item"><h3>CULT Balance</h3><span class="value">${formatNumber(walletData.cultBalance)}</span></div>
             <div class="info-item"><h3>dCULT Balance</h3><span class="value">${formatNumber(walletData.dcultBalance)}</span></div>
@@ -330,14 +370,14 @@ async function renderTrackedWallets() {
 }
 
 // --- Core Application Logic ---
-async function connectWallet() { if (typeof window.ethereum === 'undefined') return alert('Please install MetaMask.'); try { provider = new ethers.providers.Web3Provider(window.ethereum); await provider.send("eth_requestAccounts", []); signer = provider.getSigner(); userAddress = await signer.getAddress(); onChainDataCache = null; connectBtn.textContent = `${userAddress.substring(0, 6)}...`; connectBtn.disabled = false; dappContent.style.display = 'block'; document.getElementById('etherscan-link').href = `https://etherscan.io/address/${userAddress}`; document.getElementById('p-proposerWallet').innerHTML = createAddressLink(userAddress); await initializeApp(); } catch (error) { console.error("Failed to connect wallet:", error); } }
-function disconnectWallet() { location.reload(); }
+async function connectWallet() { if (typeof window.ethereum === 'undefined') return alert('Please install MetaMask.'); try { provider = new ethers.providers.Web3Provider(window.ethereum); await provider.send("eth_requestAccounts", []); signer = provider.getSigner(); userAddress = await signer.getAddress(); window.CultWalletSession?.connect(userAddress); onChainDataCache = null; connectBtn.textContent = `${userAddress.substring(0, 6)}...`; connectBtn.disabled = false; dappContent.style.display = 'block'; document.getElementById('etherscan-link').href = `https://etherscan.io/address/${userAddress}`; document.getElementById('p-proposerWallet').innerHTML = createAddressLink(userAddress); await initializeApp(); } catch (error) { console.error("Failed to connect wallet:", error); } }
+function disconnectWallet() { window.CultWalletSession?.disconnect(); location.reload(); }
 function copyUserAddressToClipboard() { if (userAddress) { copyTextToClipboard(userAddress); walletDropdown.classList.remove('show'); } }
 
 async function initializeApp() { 
     if (!signer) return; 
     const batchApiStatus = await refreshBatchApiAvailability({ force: true });
-    const savedCurrency = localStorage.getItem('preferredCurrency');
+    const savedCurrency = localStorage.getItem('cultHubCurrency:v1') || localStorage.getItem('fundsCurrency') || localStorage.getItem('preferredCurrency');
     const browserCurrency = (Intl.NumberFormat().resolvedOptions().currency || 'usd').toLowerCase();
     preferredCurrency = savedCurrency || (Object.keys(SUPPORTED_CURRENCIES).includes(browserCurrency) ? browserCurrency : 'usd');
     
@@ -355,17 +395,6 @@ async function initializeApp() {
     await initialLoad(); 
     await Promise.all([ updateGuardianThreshold(), checkUserRights() ]);
     await refreshAllTrackedWalletData();
-
-    setTimeout(() => {
-        const activeProposalsDetails = document.getElementById('details-active-proposals');
-        if (activeProposalsDetails) {
-            const activeProposalsCountText = document.getElementById('metric-active-proposals').textContent;
-            const activeProposalsCount = parseInt(activeProposalsCountText, 10);
-            if (!isNaN(activeProposalsCount) && activeProposalsCount > 0) {
-                activeProposalsDetails.open = true;
-            }
-        }
-    }, 800);
 }
 async function handleAddWalletInput() {
   const inputField = document.getElementById('track-wallet-input');
@@ -405,19 +434,8 @@ function showAndFadeNotice(message, extraClass = '') {
   noticeText.innerHTML = DOMPurify.sanitize(message, { ADD_ATTR: ['target', 'rel'] });
   noticeContainer.style.opacity = '1';
   noticeContainer.style.display = 'flex';
+  noticeContainer.classList.add('is-visible');
 
-    if (extraClass !== 'limeNotice') {
-    noticeTimeout = setTimeout(() => {
-      noticeContainer.style.transition = `opacity ${NOTICE_FADE_MS / 1000}s ease-out`;
-      noticeContainer.style.opacity = '0';
-      setTimeout(() => {
-        if (noticeContainer.style.opacity === '0') {
-          noticeContainer.style.display = 'none';
-          noticeContainer.style.transition = '';
-        }
-      }, NOTICE_FADE_MS + 1500);
-    }, NOTICE_AUTOHIDE_MS);
-  }
 }
 
 async function updateDelegationStatus() {
@@ -431,7 +449,10 @@ async function updateDelegationStatus() {
         isUserGuardian = isGuardian; 
 
         const isSelfDelegated = delegatee.toLowerCase() === userAddress.toLowerCase();
+        const readiness = CultDelegationStatus.classify({ address: userAddress, balance: userDcultBalanceRaw.toString(), delegatee, isGuardian });
         setMetric('delegation-status', isSelfDelegated ? "Self-Delegated (Active)" : "Not Delegated (Inactive)");
+        setVotingReadinessMetric('voting-readiness', readiness);
+        publishConnectedDelegationReadiness(readiness, delegatee, isGuardian);
 
         const delegateBtn = document.getElementById('delegate-btn');
         const signDelegationBtn = document.getElementById('sign-delegation-btn');
@@ -439,7 +460,8 @@ async function updateDelegationStatus() {
         const noticeContainer = document.getElementById('top50-notice-container');
         
         delegateSection.style.display = 'flex';
-        noticeContainer.style.display = 'none'; 
+        noticeContainer.style.display = 'none';
+        noticeContainer.classList.remove('is-visible');
 
         const toBN = (x) => (x && ethers.BigNumber.isBigNumber(x)) ? x : ethers.BigNumber.from(x || 0);
         const walletCultBN = toBN(userCultBalanceRaw);
@@ -562,6 +584,8 @@ async function handleCurrencyChange(newCurrency) {
     if (!newCurrency || !SUPPORTED_CURRENCIES[newCurrency]) return;
     preferredCurrency = newCurrency;
     localStorage.setItem('preferredCurrency', preferredCurrency);
+    localStorage.setItem('fundsCurrency', preferredCurrency);
+    localStorage.setItem('cultHubCurrency:v1', preferredCurrency);
     currencySelectorBtn.textContent = SUPPORTED_CURRENCIES[newCurrency];
     showCustomAlert(`Fetching prices in ${SUPPORTED_CURRENCIES[newCurrency]}...`);
     try {
@@ -665,7 +689,7 @@ async function fetchOnChainAndPriceData() {
         console.error("Failed to load DAO metrics:", err);
         priceData.baseEthInUsd = 0;
         recalculateAndRenderAllFiatValues();
-        currencyWidget.style.display = 'none';
+        currencyWidget.style.display = 'block';
         return false;
     }
 }
@@ -736,6 +760,33 @@ function renderStaticMetrics() {
 function formatTimeRemaining(seconds) { if (seconds <= 0) return "Voting Ended"; const d = Math.floor(seconds / (3600*24)); const h = Math.floor((seconds % (3600*24)) / 3600); const m = Math.floor((seconds % 3600) / 60); const s = Math.floor(seconds % 60); return `${d > 0 ? d + "d " : ""}${h > 0 ? h + "h " : ""}${m > 0 ? m + "m " : ""}${s}s`; }
 async function startProposalTimer(proposalId, endBlock) { const timerEl = document.querySelector(`.proposal[data-proposal-id='${proposalId}'] .proposal-timer`); if (!timerEl || !provider) return; try { const currentBlockNumber = await provider.getBlockNumber(); const blocksRemaining = endBlock - currentBlockNumber; if (blocksRemaining <= 0) { timerEl.textContent = "Voting Ended"; return; } let secondsRemaining = blocksRemaining * averageBlockTime; if (activeTimers[proposalId]) clearInterval(activeTimers[proposalId]); const intervalId = setInterval(() => { secondsRemaining -= 1; if (secondsRemaining <= 0) { timerEl.textContent = "Voting Ended"; clearInterval(intervalId); delete activeTimers[proposalId]; } else { timerEl.textContent = formatTimeRemaining(secondsRemaining); } }, 1000); activeTimers[proposalId] = intervalId; } catch (error) { console.error(`Failed to start timer for proposal ${proposalId}:`, error); timerEl.textContent = "Error"; } }
 
+async function publishProposalCardSummary(proposals) {
+    const activeVotingProposals = proposals.filter(proposal => proposal.state === PROPOSAL_STATES.ACTIVE);
+    let nearestEndsAt = 0;
+
+    if (activeVotingProposals.length && provider && averageBlockTime > 0) {
+        try {
+            const currentBlock = await provider.getBlockNumber();
+            const nearestEndBlock = Math.min(...activeVotingProposals.map(proposal => proposal.endBlock.toNumber()));
+            const blocksRemaining = Math.max(0, nearestEndBlock - currentBlock);
+            if (blocksRemaining > 0) nearestEndsAt = Date.now() + (blocksRemaining * averageBlockTime * 1000);
+        } catch (error) {
+            console.warn('Could not calculate the proposal card deadline:', error);
+        }
+    }
+
+    let previous = {};
+    try { previous = JSON.parse(localStorage.getItem('cultHubProposalSummary:v1') || '{}') || {}; } catch { /* Use a fresh summary. */ }
+    const summary = {
+        ...previous,
+        activeCount: proposals.length,
+        nearestEndsAt,
+        updatedAt: Date.now()
+    };
+    try { localStorage.setItem('cultHubProposalSummary:v1', JSON.stringify(summary)); } catch { /* The live proposal view remains usable. */ }
+    window.dispatchEvent(new CustomEvent('cult-section-summary'));
+}
+
 // --- DATA LOADING & RENDERING ---
 async function initialLoad() { 
     const governorContract = new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, provider); 
@@ -780,6 +831,8 @@ async function initialLoad() {
                 
         const activeAndPendingProposals = allProposals.filter(p => p.state === PROPOSAL_STATES.PENDING || p.state === PROPOSAL_STATES.ACTIVE);
         const pastProposals = allProposals.filter(p => p.state !== PROPOSAL_STATES.PENDING && p.state !== PROPOSAL_STATES.ACTIVE).sort((a, b) => b.id - a.id);
+
+        await publishProposalCardSummary(activeAndPendingProposals);
 
         renderProposals(activeAndPendingProposals, document.getElementById('active-proposal-list'), { isActiveList: true });
         renderProposals(pastProposals.slice(0, displayedPastProposalsCount), document.getElementById('past-proposal-list'), { isActiveList: false });
@@ -1380,7 +1433,10 @@ window.addEventListener('DOMContentLoaded', () => {
     
     safeAddEventListener('close-top50-notice-btn', 'click', () => {
         const noticeContainer = document.getElementById('top50-notice-container');
-        if (noticeContainer) noticeContainer.style.display = 'none';
+        if (noticeContainer) {
+            noticeContainer.style.display = 'none';
+            noticeContainer.classList.remove('is-visible');
+        }
         if (noticeTimeout) clearTimeout(noticeTimeout); 
     });
 
@@ -1427,6 +1483,8 @@ window.addEventListener('DOMContentLoaded', () => {
             currencyDropdown.classList.remove('show');
         }
     });
+
+    if (window.CultWalletSession?.read().connected) connectWallet();
 
     safeAddEventListener('stake-btn', 'click', stake);
     safeAddEventListener('unstake-btn', 'click', unstake);

@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- ============================================================
-     CULT DAO Hub — v1.0.0 — 2025-08-23
+     CULT DAO Hub — v2.0.0 — 2026-07-13
      Developed by fl0ri0 (github.com/fl0ri0)
      Gifted to the CULT DAO community — published under github.com/wearecultdao/hub
      Licensed under MIT
@@ -9,15 +9,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src 'self' https://*.alchemy.com https://api.coingecko.com https://api.cultdao.io https://api.github.com; object-src 'none';"> 
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; img-src 'self' https: data:; connect-src 'self' https://*.alchemy.com https://api.coingecko.com https://api.cultdao.io https://api.github.com https://eth.blockscout.com https://base.blockscout.com https://polygon.blockscout.com https://ethereum.publicnode.com https://1rpc.io https://eth.drpc.org https://cloudflare-eth.com https://mainnet.base.org https://base.publicnode.com https://polygon-bor-rpc.publicnode.com; object-src 'none';"> 
    <title>CULT DAO | HUB</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js" type="application/javascript"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto+Mono:wght@400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles/dao.css">
+    <link rel="stylesheet" href="shared/site-nav.css?v=16">
+    <link rel="stylesheet" href="shared/entry.css?v=45">
+    <link rel="stylesheet" href="shared/address-identity.css?v=20">
+    <link rel="stylesheet" href="shared/connected-wallet-overview.css?v=12">
+    <script src="shared/theme-sync.js?v=1"></script>
 </head>
-<body>
+<body class="hub-root">
 
     <div id="custom-alert-overlay">
         <div class="custom-alert-modal">
@@ -48,7 +54,7 @@
     </div>
     <div class="container">
         <header class="header">
-            <h1>CULT DAO</h1>
+            <div class="site-title"><h1><a href="./" aria-label="CULT DAO Hub home">CULT DAO</a></h1></div>
             <div class="header-actions">
 			  <button id="shuffle-theme-btn" class="icon-button" title="Shuffle Experience">
     <!-- SHUFFLE SVG -->
@@ -64,21 +70,34 @@
     </svg>
   </button>
 
-  <div id="currency-widget" class="currency-widget" style="display: none;">
-    <button id="currency-selector-btn" class="icon-button" title="Switch Currency">
-      <!-- CURRENCY SVG -->
-      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 256 256" fill="currentColor">
-        <path d="M184,89.57V84c0-25.08-37.83-44-88-44S8,58.92,8,84v40c0,20.89,26.25,37.49,64,42.46V172c0,25.08,37.83,44,88,44s88-18.92,88-44V132C248,111.3,222.58,94.68,184,89.57ZM232,132c0,13.22-30.79,28-72,28-3.73,0-7.43-.13-11.08-.37C170.49,151.77,184,139,184,124V105.74C213.87,110.19,232,122.27,232,132ZM72,150.25V126.46A183.74,183.74,0,0,0,96,128a183.74,183.74,0,0,0,24-1.54v23.79A163,163,0,0,1,96,152,163,163,0,0,1,72,150.25Zm96-40.32V124c0,8.39-12.41,17.4-32,22.87V123.5C148.91,120.37,159.84,115.71,168,109.93ZM96,56c41.21,0,72,14.78,72,28s-30.79,28-72,28S24,97.22,24,84,54.79,56,96,56ZM24,124V109.93c8.16,5.78,19.09,10.44,32,13.57v23.37C36.41,141.4,24,132.39,24,124Zm64,48v-4.17c2.63.1,5.29.17,8,.17,3.88,0,7.67-.13,11.39-.35A121.92,121.92,0,0,0,120,171.41v23.46C100.41,189.4,88,180.39,88,172Zm48,26.25V174.4a179.48,179.48,0,0,0,24,1.6,183.74,183.74,0,0,0,24-1.54v23.79a165.45,165.45,0,0,1-48,0Zm64-3.38V171.5c12.91-3.13,23.84-7.79,32-13.57V172C232,180.39,219.59,189.4,200,194.87Z"/>
-      </svg>
-    </button>
-                    <div id="currency-dropdown" class="wallet-dropdown">
-                        <!-- Options will be populated by app.js -->
+                <div id="currency-widget" class="currency-widget" data-currency-owner="hub">
+                    <button id="currency-selector-btn" class="icon-button" type="button" title="Switch Currency" aria-label="Currency" aria-expanded="false">USD</button>
+                    <div id="currency-dropdown" class="wallet-dropdown" aria-label="Currency"></div>
+                </div>
+                <div class="menu-widget">
+                    <button id="menu-toggle" class="icon-button" type="button" title="Menu" aria-label="Menu" aria-expanded="false" data-shared-menu-toggle>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128ZM40,72H216a8,8,0,0,0,0-16H40a8,8,0,0,0,0,16ZM216,184H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Z"/></svg>
+                    </button>
+                    <div id="utility-menu" class="utility-menu" aria-label="Hub menu" data-shared-menu>
+                        <button id="export-address-labels" type="button" class="menu-item"><span class="menu-label">Export address labels</span><span class="menu-hint">Download permanent names and descriptions.</span></button>
+                        <button id="import-address-labels" type="button" class="menu-item"><span class="menu-label">Import address labels</span><span class="menu-hint">Keep, merge, or replace labels from JSON.</span></button>
+                        <input id="import-address-labels-file" type="file" accept="application/json,.json" hidden>
+                        <button id="export-wallet-collections" type="button" class="menu-item"><span class="menu-label">Export wallet collections</span><span class="menu-hint">Download the Portfolio-compatible dataset.</span></button>
+                        <button id="import-wallet-collections" type="button" class="menu-item"><span class="menu-label">Import wallet collections</span><span class="menu-hint">Load a Portfolio-compatible dataset.</span></button>
+                        <input id="import-wallet-collections-file" type="file" accept="application/json,.json" hidden>
+                        <details class="menu-submenu">
+                            <summary class="menu-item"><span class="menu-label">Restore</span><span class="menu-hint">Recover hidden assets or wallet presets.</span></summary>
+                            <div class="menu-submenu-items">
+                                <button id="restore-hidden-assets-shared" type="button" class="menu-item"><span class="menu-label">Restore hidden assets</span><span id="restore-hidden-assets-shared-hint" class="menu-hint">No manually hidden assets.</span></button>
+                                <a href="portfolio/" class="menu-item"><span class="menu-label">Wallet preset restore</span><span class="menu-hint">Open Portfolio’s CULTDAO Funds restore controls.</span></a>
+                            </div>
+                        </details>
                     </div>
                 </div>
-                <div class="wallet-widget">
+                <div class="wallet-widget" data-wallet-owner="hub">
                     <button id="connect-wallet-btn" class="btn">Connect Wallet</button>
                     <div id="wallet-dropdown" class="wallet-dropdown">
-                         <a href="https://app.uniswap.org/#/swap?outputCurrency=0xf0f9d895aca5c8678f706fb8216fa22957685a13" target="_blank" rel="noopener noreferrer" class="dropdown-item">Buy on Uniswap</a>
+                        <a href="https://app.uniswap.org/#/swap?outputCurrency=0xf0f9d895aca5c8678f706fb8216fa22957685a13" target="_blank" rel="noopener noreferrer" class="dropdown-item">Buy on Uniswap</a>
                         <button id="copy-address-btn" class="dropdown-item">Copy Address</button>
                         <a id="etherscan-link" href="#" target="_blank" rel="noopener noreferrer" class="dropdown-item">View on Etherscan</a>
                         <button id="disconnect-btn" class="dropdown-item">Disconnect</button>
@@ -86,37 +105,81 @@
                 </div>
             </div>
         </header>
+        <section class="hub-entry" aria-label="Choose a CULT DAO section">
+            <div class="hub-entry-grid">
+                <a class="hub-entry-card" data-section="stake" href="?section=stake">
+                    <div class="entry-card-copy"><h3>Staking &amp; Returns</h3></div>
+                    <div class="entry-card-summary"><span class="entry-metric"><small id="entry-stake-returns" hidden></small><strong id="entry-stake-metric">Connect</strong></span></div>
+                </a>
+                <div class="hub-entry-card" data-section="portfolio">
+                    <a class="entry-card-link" href="portfolio/" aria-label="Open Portfolio"></a>
+                    <div class="entry-card-copy"><h3>Portfolio</h3></div>
+                    <div class="entry-card-summary">
+                        <div id="entry-portfolio-collections" class="entry-portfolio-collections" hidden>
+                            <label for="entry-portfolio-collection-select" title="Switch wallet collection"><svg viewBox="0 0 256 256" aria-hidden="true"><line x1="88" y1="64" x2="216" y2="64"></line><line x1="88" y1="128" x2="216" y2="128"></line><line x1="88" y1="192" x2="216" y2="192"></line><circle cx="44" cy="64" r="12"></circle><circle cx="44" cy="128" r="12"></circle><circle cx="44" cy="192" r="12"></circle></svg><select id="entry-portfolio-collection-select" aria-label="Wallet collection"></select></label>
+                        </div>
+                        <span class="entry-metric"><strong id="entry-portfolio-metric">Load</strong></span>
+                    </div>
+                </div>
+                <a class="hub-entry-card" data-section="proposals" href="?section=proposals">
+                    <div class="entry-card-copy"><h3>Proposals</h3></div>
+                    <div class="entry-card-summary"><span class="entry-metric"><small id="entry-proposals-deadline" hidden></small><strong id="entry-proposals-metric">Open</strong></span></div>
+                </a>
+                <a class="hub-entry-card" data-section="delegation" href="delegation/">
+                    <div class="entry-card-copy"><h3>Delegation</h3></div>
+                    <div class="entry-card-summary"><span class="entry-metric"><small id="entry-delegation-context" hidden></small><strong id="entry-delegation-metric">Check</strong></span></div>
+                </a>
+                <a class="hub-entry-card" data-section="analytics" href="governance/">
+                    <div class="entry-card-copy"><h3>Analytics</h3></div>
+                    <div class="entry-card-summary"><span class="entry-metric"><strong id="entry-analytics-metric">Open dashboard</strong></span></div>
+                </a>
+                <a class="hub-entry-card" data-section="burn" href="burn/">
+                    <div class="entry-card-copy"><h3>Burns &amp; Contributions</h3></div>
+                    <div class="entry-card-summary"><span class="entry-metric"><small id="entry-burn-percent" hidden></small><strong id="entry-burn-metric">Load</strong></span></div>
+                </a>
+            </div>
+        </section>
         <div id="reminder-banner" style="display: none;">
             <p>This is a community-built tool for CULT DAO. (Latest update: <span id="repo-update-date">...</span>)</p>
             <button id="close-reminder-btn">×</button>
         </div>
         <canvas id="snap-canvas" width="800" height="60" style="display: none;"></canvas>
         <main id="dapp-content" class="dapp-content">
+            <div id="hub-wallet-notices" class="hub-notice-stack" aria-label="Wallet notices" aria-live="polite">
+                <div id="delegation-batch-api-notice" class="batch-api-notice"></div>
+                <div id="top50-notice-container" class="eligibility-notice" style="margin-top: 12px; width: 100%; position: relative; display: none;">
+                    <p id="top50-notice" style="margin: 0; padding-right: 25px;"></p>
+                    <button id="close-top50-notice-btn" class="notice-close-btn">×</button>
+                </div>
+            </div>
+            <section id="connected-wallet-overview" class="connected-wallet-overview" aria-label="Connected wallet portfolio" hidden></section>
             <!-- Wallet Section (Always Open) -->
-            <section class="ui-section">
-                <div class="info-grid">
+            <details id="protocol-hub" class="ui-section protocol-wallet-details">
+                <summary class="protocol-wallet-summary">
+                    <span>Protocol details</span>
+                    <small>CULT, dCULT, proposal rights, delegation and Guardian threshold</small>
+                </summary>
+                <div class="protocol-wallet-body">
+                  <div class="info-grid">
                     <div class="info-item"><h3>Wallet</h3><span id="wallet-address" class="value">...</span></div>
                     <div class="info-item"><h3>Delegation Status</h3><span id="delegation-status" class="value">...</span></div>
+                    <div class="info-item"><h3>Voting Readiness</h3><span id="voting-readiness" class="value voting-readiness">...</span></div>
                     <div class="info-item"><h3 id="rights-label">Your Rights</h3><span id="proposal-rights" class="value">...</span></div>
                     <div class="info-item"><h3>Your CULT</h3><span id="cult-balance" class="value">0.00</span></div>
                     <div class="info-item"><h3>Your dCULT</h3><span id="dcult-balance" class="value">0.00</span></div>
 					<div class="info-item"><h3>Combined CULT Holdings</h3><span id="total-cult-holdings" class="value">...</span></div>
 					<div class="info-item"><h3 id="total-cult-value-label">Total Value</h3><span id="total-cult-value" class="value">...</span></div>
-					<div class="info-item"><h3>Guardian Threshold</h3><span id="top50staker" class="value">...</span></div>
-                </div>
-                <div id="delegate-section" class="button-group" style="display: none;">
+					<div class="info-item protocol-guardian-threshold"><h3>Guardian Threshold</h3><span id="top50staker" class="value">...</span></div>
+                  </div>
+                  <div id="delegate-section" class="button-group" style="display: none;">
                     <button id="delegate-btn" class="btn">Delegate (TX)</button>
                     <button id="sign-delegation-btn" class="btn" style="border-style: dashed;">Delegate (Sig)</button>
                     <button id="push-delegates-btn" class="btn">Push <span id="delegate-counter">0</span> Delegates</button>
-                    <div id="delegation-batch-api-notice" class="batch-api-notice" aria-live="polite"></div>
-                    <div id="top50-notice-container" class="eligibility-notice" style="margin-top: 12px; width: 100%; position: relative; display: none;">
-    <p id="top50-notice" style="margin: 0; padding-right: 25px;"></p>
-    <button id="close-top50-notice-btn" class="notice-close-btn">×</button>
-</div>
+                  </div>
                 </div>
-            </section>
+            </details>
 
-            <details id="details-tracked-wallets">
+            <details id="details-tracked-wallets" hidden>
                 <summary><h2>Track Your Wallets</h2></summary>
                 <section class="ui-section" style="margin-top: 1rem;">
                     <h4>Combined Tracked Wallets</h4>
@@ -193,7 +256,7 @@
                 </section>
             </details>  
 
-            <details id="details-dao-metrics">
+            <details id="details-dao-metrics" hidden>
                 <summary><h2>DAO Metrics</h2></summary>
                 <section class="ui-section" id="dao-metrics-section" style="margin-top: 1rem;">
                     <h4>Proposals Stats</h4>
@@ -301,6 +364,7 @@
                 </section>
             </details>
         </main>
+        <footer class="site-footer"><strong>Community-built for The Many.</strong><nav aria-label="Source links"><a class="footer-primary" href="https://github.com/wearecultdao" target="_blank" rel="noopener">GitHub</a><a href="https://github.com/wearecultdao/portfoliotracker" target="_blank" rel="noopener">Portfolio Tracker</a><a href="https://github.com/wearecultdao/hub" target="_blank" rel="noopener">Hub</a><a href="https://github.com/wearecultdao/burntracker" target="_blank" rel="noopener">Burntracker</a><a href="https://github.com/wearecultdao/governance-dashboard" target="_blank" rel="noopener">Governance</a></nav></footer>
     </div>
 
     <template id="proposal-template">
@@ -343,8 +407,19 @@
         </div>
     </template>
 
+    <script src="shared/delegation-status.js?v=2"></script>
+    <script src="shared/governance-live-state.js?v=4"></script>
+    <script src="shared/wallet-structural-state.js?v=1"></script>
+    <script src="shared/entry-metrics.js?v=19"></script>
+    <script src="shared/address-identity.js?v=4"></script>
+    <script src="shared/address-identity-ui.js?v=23"></script>
+    <script src="shared/network-summary.js?v=1"></script>
+    <script src="shared/connected-wallet-overview.js?v=19"></script>
     <script type="module" src="contracts.js"></script>
-    <script type="module" src="app.js"></script>
+    <script type="module" src="app.js?v=proposal-card-deadline-1"></script>
+    <script src="shared/historical-data-updates.js?v=1"></script>
+    <script src="shared/header-shell.js?v=7"></script>
+    <script src="shared/connected-delegation-probe.js?v=4"></script>
     
 </body>
 </html>
