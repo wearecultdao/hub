@@ -12,12 +12,12 @@ No account. No custody. Your wallet shows every transaction before you approve i
 
 The six task-focused entries are:
 
-- **Staking & Returns** — stake CULT, unstake dCULT, claim returns, and manage delegation.
-- **Portfolio** — inspect Ethereum, Base, and Polygon wallets, collections, Safe ownership, and assets.
-- **Proposals** — browse proposals; vote, propose, cancel, queue, or execute through the preserved Hub workflow.
-- **Delegation** — check voting readiness, delegation state, voting rights, and cached vote history without connecting a wallet.
-- **Analytics** — explore DAO, governance, Guardian, participation, and delegatee data.
-- **Burns & Contributions** — follow CULT burns, contributions, supply changes, and return distributions.
+- **Staking & Returns** – stake CULT, unstake dCULT, claim returns, and manage delegation.
+- **Portfolio** – inspect Ethereum, Base, and Polygon wallets, collections, Safe ownership, and assets.
+- **Proposals** – browse proposals; vote, propose, cancel, queue, or execute through the preserved Hub workflow.
+- **Delegation** – check voting readiness, delegation state, voting rights, and cached vote history without connecting a wallet.
+- **Analytics** – explore DAO, governance, Guardian, participation, and delegatee data.
+- **Burns & Contributions** – follow CULT burns, contributions, supply changes, and return distributions.
 
 ---
 
