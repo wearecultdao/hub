@@ -10,10 +10,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=delegatee-identity-1">
+    <link rel="stylesheet" href="styles.css?v=analytics-proposal-guide-4">
     <link rel="stylesheet" href="../shared/site-nav.css?v=16">
     <link rel="stylesheet" href="../shared/entry.css?v=45">
     <link rel="stylesheet" href="../shared/address-identity.css?v=20">
+    <link rel="stylesheet" href="../shared/ethereum-network.css?v=2">
     <script src="../shared/theme-sync.js?v=1"></script>
 </head>
 <body>
@@ -104,6 +105,7 @@
                 <div class="wallet-widget" data-wallet-owner="governance">
                     <button id="connect-wallet-btn" class="text-button" type="button">Connect Wallet</button>
                     <div id="wallet-dropdown" class="wallet-dropdown" aria-label="Wallet menu">
+                        <a href="https://app.uniswap.org/#/swap?outputCurrency=0xf0f9d895aca5c8678f706fb8216fa22957685a13" target="_blank" rel="noopener noreferrer" class="dropdown-item">Buy on Uniswap</a>
                         <button id="copy-address-btn" class="dropdown-item" type="button">Copy Address</button>
                         <a id="etherscan-link" href="#" target="_blank" rel="noopener noreferrer" class="dropdown-item">View on Etherscan</a>
                         <button id="disconnect-btn" class="dropdown-item" type="button">Disconnect</button>
@@ -127,6 +129,7 @@
             <details class="tool-details visuals-details" open>
                 <summary><h2>DAO &amp; Governance Analytics</h2></summary>
                 <div class="tool-details-content">
+                    <p class="analytics-proposal-guide">Looking for a specific vote or proposal? <a href="../?section=proposals#details-past-proposals">View its detailed breakdown in Past Proposals →</a></p>
                     <details class="ui-section visual-chart-section visual-chart-details" open>
                         <summary class="visual-chart-summary" id="governance-snapshot-title">Current Governance State</summary>
                         <div id="governance-snapshot" class="governance-snapshot" aria-label="Current governance state">
@@ -408,7 +411,8 @@
         <footer class="site-footer"><strong>Community-built for The Many.</strong><nav aria-label="Source links"><a class="footer-primary" href="https://github.com/wearecultdao" target="_blank" rel="noopener">GitHub</a><a href="https://github.com/wearecultdao/hub" target="_blank" rel="noopener">Hub</a></nav></footer>
     </div>
 
-    <script src="app.js?v=delegatee-identity-1"></script>
+    <script src="../shared/ethereum-network.js?v=2"></script>
+    <script src="app.js?v=checker-gate-disabled-1"></script>
     <script src="restore-historical-data.js?v=1"></script>
     <script src="../shared/delegation-status.js?v=2"></script>
     <script src="../shared/governance-live-state.js?v=4"></script>
@@ -417,7 +421,7 @@
     <script src="../shared/header-shell.js?v=7"></script>
     <script src="../shared/connected-delegation-probe.js?v=4"></script>
     <script src="../shared/section-launcher.js?v=11"></script>
-    <script src="../shared/entry-metrics.js?v=19"></script>
+    <script src="../shared/entry-metrics.js?v=20"></script>
     <script src="../shared/analytics-summary.js?v=2"></script>
     <script src="../shared/address-identity.js?v=4"></script>
     <script src="../shared/address-identity-ui.js?v=23"></script>

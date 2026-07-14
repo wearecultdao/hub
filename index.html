@@ -21,6 +21,8 @@
     <link rel="stylesheet" href="shared/entry.css?v=45">
     <link rel="stylesheet" href="shared/address-identity.css?v=20">
     <link rel="stylesheet" href="shared/connected-wallet-overview.css?v=12">
+    <link rel="stylesheet" href="shared/ethereum-network.css?v=2">
+    <link rel="stylesheet" href="shared/proposal-governance-insights.css?v=1">
     <script src="shared/theme-sync.js?v=1"></script>
 </head>
 <body class="hub-root">
@@ -172,9 +174,9 @@
 					<div class="info-item protocol-guardian-threshold"><h3>Guardian Threshold</h3><span id="top50staker" class="value">...</span></div>
                   </div>
                   <div id="delegate-section" class="button-group" style="display: none;">
-                    <button id="delegate-btn" class="btn">Delegate (TX)</button>
-                    <button id="sign-delegation-btn" class="btn" style="border-style: dashed;">Delegate (Sig)</button>
-                    <button id="push-delegates-btn" class="btn">Push <span id="delegate-counter">0</span> Delegates</button>
+                    <button id="delegate-btn" class="btn" data-requires-ethereum>Delegate (TX)</button>
+                    <button id="sign-delegation-btn" class="btn" style="border-style: dashed;" data-requires-ethereum>Delegate (Sig)</button>
+                    <button id="push-delegates-btn" class="btn" data-requires-ethereum>Push <span id="delegate-counter">0</span> Delegates</button>
                   </div>
                 </div>
             </details>
@@ -222,7 +224,7 @@
                                 <input type="text" id="stake-amount" placeholder="0.0">
                                 <button id="stake-max-btn" class="btn-max">Max</button>
                             </div>
-                            <div class="button-group" style="margin-top: 10px;"><button id="stake-btn" class="btn">Stake</button></div>
+                            <div class="button-group" style="margin-top: 10px;"><button id="stake-btn" class="btn" data-requires-ethereum>Stake</button></div>
                         </div>
                          <div class="form-group full-width">
                             <div class="label-line">
@@ -233,7 +235,7 @@
                                 <input type="text" id="unstake-amount" placeholder="0.0">
                                 <button id="unstake-max-btn" class="btn-max">Max</button>
                             </div>
-                            <div class="button-group" style="margin-top: 10px;"><button id="unstake-btn" class="btn">Unstake</button></div>
+                            <div class="button-group" style="margin-top: 10px;"><button id="unstake-btn" class="btn" data-requires-ethereum>Unstake</button></div>
                         </div>
                     </div>
                     <hr style="border-color: var(--color-border-stroke); opacity: 0.2; margin: 30px 0;">
@@ -244,7 +246,7 @@
                         </div>
                     </div>
                     <div class="button-group">
-                        <button id="claim-rewards-btn" class="btn" style="display: none;">Claim Your Returns</button>
+                        <button id="claim-rewards-btn" class="btn" style="display: none;" data-requires-ethereum>Claim Your Returns</button>
                     </div>
                 </section>
             </details>
@@ -337,7 +339,7 @@
                         </details>
                     </div>
                     <div class="button-group" style="margin-top: 20px;">
-                        <button id="submit-proposal-btn" class="btn">Submit Proposal</button>
+                        <button id="submit-proposal-btn" class="btn" data-requires-ethereum>Submit Proposal</button>
                     </div>
                     <p id="proposal-eligibility-notice" class="eligibility-notice"></p>
                 </section>
@@ -371,7 +373,13 @@
         <div class="proposal">
             <div class="proposal-title">
                 <h3 class="proposal-name-title"></h3>
-                <span class="proposal-status"></span>
+                <div class="proposal-card-badges">
+                    <span class="proposal-impact-icons" aria-label="Proposal impact indicators"></span>
+                    <span class="proposal-card-status-group">
+                        <span class="proposal-status"></span>
+                        <button class="proposal-sections-toggle" type="button" hidden aria-expanded="false" aria-label="Show proposal sections"><span aria-hidden="true">▼</span></button>
+                    </span>
+                </div>
             </div>
     
             <div class="proposal-timer-container" style="margin-top: 0px; margin-bottom: 8px; display: none; align-items: center;">
@@ -379,30 +387,48 @@
                 <span class="proposal-timer" style="font-family: var(--font-mono); color: var(--color-green); font-size: 0.9rem;">...</span>
             </div>
     
-            <div class="button-group" style="margin-top: 12px;">
-                <button class="btn-expand view-details-btn">Show Details ▼</button>
-            </div>
-            
-            <div class="proposal-details" style="display: none;">
-                <div class="details-section" style="margin-top:20px">
-                    <div class="details-grid">
-                        <div class="details-item"><strong>For Votes:</strong><br><span class="prop-for-votes"></span></div>
-                        <div class="details-item"><strong>Against Votes:</strong><br><span class="prop-against-votes"></span></div>
-                        <div class="details-item"><strong>Total Votes:</strong><br><span class="prop-total-votes"></span></div>
-                        <div class="details-item"><strong>Proposer:</strong><br><span class="prop-proposer"></span></div>
-                        <div class="details-item"><strong>Start Block:</strong><br><span class="prop-start-block"></span></div>
-                        <div class="details-item"><strong>End Block:</strong><br><span class="prop-end-block"></span></div>
-                        <div class="details-item"><strong>ETA:</strong><br><span class="prop-eta"></span></div>
-                        <div class="details-item prop-execution-tx" style="display: none;"><strong>Execution TX:</strong><br><span class="prop-execution-tx-link"></span></div>
-                        <div class="details-item prop-funding-tx" style="display: none;"><strong>Payment TX:</strong><br><span class="prop-funding-tx-link"></span></div>
+            <div class="proposal-card-sections" hidden>
+            <details class="hub-proposal-disclosure proposal-core-disclosure">
+                <summary>Proposal Details</summary>
+                <div class="proposal-details proposal-disclosure-panel" style="display: none;">
+                    <div class="details-section">
+                        <div class="details-grid">
+                            <div class="details-item"><strong>For Votes:</strong><br><span class="prop-for-votes"></span></div>
+                            <div class="details-item"><strong>Against Votes:</strong><br><span class="prop-against-votes"></span></div>
+                            <div class="details-item"><strong>Total Votes:</strong><br><span class="prop-total-votes"></span></div>
+                            <div class="details-item"><strong>Proposer:</strong><br><span class="prop-proposer"></span></div>
+                            <div class="details-item"><strong>Start Block:</strong><br><span class="prop-start-block"></span></div>
+                            <div class="details-item"><strong>End Block:</strong><br><span class="prop-end-block"></span></div>
+                            <div class="details-item"><strong>ETA:</strong><br><span class="prop-eta"></span></div>
+                            <div class="details-item prop-execution-tx" style="display: none;"><strong>Execution TX:</strong><br><span class="prop-execution-tx-link"></span></div>
+                            <div class="details-item prop-funding-tx" style="display: none;"><strong>Payment TX:</strong><br><span class="prop-funding-tx-link"></span></div>
+                        </div>
+                    </div>
+                    <div class="details-section prop-description-container"></div>
+                    <div class="proposal-actions-container"></div>
+                    <details class="proposal-technical-data-disclosure" hidden>
+                        <summary class="advanced-options-summary">Technical Data</summary>
+                        <div class="details-section prop-technical-data"></div>
+                    </details>
+                </div>
+            </details>
+
+            <details class="hub-proposal-disclosure proposal-governance-metrics-disclosure" data-insight-section="metrics">
+                <summary>Governance Metrics</summary>
+                <div class="proposal-governance-metrics-panel proposal-disclosure-panel">
+                    <div class="proposal-governance-donuts" aria-label="Proposal governance summary"></div>
+                    <div class="proposal-governance-metrics-content">
+                        <p class="proposal-insight-empty">Loading governance metrics...</p>
                     </div>
                 </div>
-                <div class="details-section prop-description-container"></div>
-                <div class="proposal-actions-container"></div>
-                <details>
-                    <summary class="advanced-options-summary">Technical Data</summary>
-                    <div class="details-section prop-technical-data"></div>
-                </details>
+            </details>
+
+            <details class="hub-proposal-disclosure proposal-governance-evidence-disclosure" data-insight-section="evidence">
+                <summary>Wasted Wallets &amp; Delegatee Duty</summary>
+                <div class="proposal-governance-evidence-content proposal-disclosure-panel">
+                    <p class="proposal-insight-empty">Loading wallet and delegatee evidence...</p>
+                </div>
+            </details>
             </div>
         </div>
     </template>
@@ -410,13 +436,14 @@
     <script src="shared/delegation-status.js?v=2"></script>
     <script src="shared/governance-live-state.js?v=4"></script>
     <script src="shared/wallet-structural-state.js?v=1"></script>
-    <script src="shared/entry-metrics.js?v=19"></script>
+    <script src="shared/entry-metrics.js?v=20"></script>
     <script src="shared/address-identity.js?v=4"></script>
     <script src="shared/address-identity-ui.js?v=23"></script>
     <script src="shared/network-summary.js?v=1"></script>
     <script src="shared/connected-wallet-overview.js?v=19"></script>
+    <script src="shared/ethereum-network.js?v=2"></script>
     <script type="module" src="contracts.js"></script>
-    <script type="module" src="app.js?v=proposal-card-deadline-1"></script>
+    <script type="module" src="app.js?v=ethereum-network-1"></script>
     <script src="shared/historical-data-updates.js?v=1"></script>
     <script src="shared/header-shell.js?v=7"></script>
     <script src="shared/connected-delegation-probe.js?v=4"></script>

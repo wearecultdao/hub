@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-07-14 — Ethereum network safety
+
+### Added
+
+- Consistent connected-network detection across Hub, Portfolio, Delegation, Analytics, and Burn routes.
+- A one-click wallet prompt to switch from another active chain to Ethereum mainnet.
+- Live recovery when the wallet emits `chainChanged`, including automatic Hub and Analytics reinitialization.
+- UI and transaction-boundary guards that prevent Hub transactions and signatures on the wrong chain.
+
 ## 2026-07-13 — Hub 2.0.0
 
 ### Summary

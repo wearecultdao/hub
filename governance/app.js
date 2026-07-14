@@ -79,6 +79,7 @@ const LOCAL_STORAGE_CACHE_LIMIT = 4_500_000;
 const THEME_STORAGE_KEY = 'cultWastedVotesTheme:v2';
 const THEME_SEQUENCE = Object.freeze(['default', 'publish']);
 const CHECKER_USED_STORAGE_KEY = 'cultDelegationCheckerUsed:v1';
+const DELEGATION_CHECKER_GATE_ENABLED = false;
 const GUARDIAN_VIEW_STORAGE_KEY = 'cultGuardianOverviewView:v1';
 const ADDRESS_TOPIC_CHUNK_SIZE = 60;
 const CALL_CONCURRENCY = 4;
@@ -99,6 +100,7 @@ let readProvider = null;
 let providerInfo = null;
 let providerMode = '';
 let connectedAddress = '';
+let walletListenersAttached = false;
 let governorContract = null;
 let dcultContract = null;
 let cultContract = null;
@@ -437,7 +439,7 @@ function markDelegationCheckerUsed() {
 }
 
 function updateDelegationCheckerGate() {
-    const unlocked = hasUsedDelegationChecker();
+    const unlocked = !DELEGATION_CHECKER_GATE_ENABLED || hasUsedDelegationChecker();
     document.documentElement.classList.toggle('has-used-delegation-checker', unlocked);
 
     for (const section of document.querySelectorAll('.visuals-details, .proposals-tool-details, .guardians-tool-details')) {
@@ -544,6 +546,7 @@ async function connectWalletAndInitialize() {
             return;
         }
 
+        setupWalletListeners();
         setBusy(true);
         setStatus('Connecting wallet...');
         await window.ethereum.request({ method: 'eth_requestAccounts' });
@@ -551,7 +554,7 @@ async function connectWalletAndInitialize() {
         await initialize({ forceRefresh: true });
     } catch (error) {
         console.error(error);
-        setStatus(error?.message || 'Wallet connection failed.', true);
+        if (error?.code !== 'WRONG_NETWORK') setStatus(error?.message || 'Wallet connection failed.', true);
     } finally {
         setBusy(false);
     }
@@ -577,26 +580,30 @@ async function autoUseAuthorizedWallet() {
 
         await useInjectedWalletProvider();
         await initialize({ forceRefresh: true });
-    } catch {
-        renderDisconnectedState();
+    } catch (error) {
+        if (error?.code !== 'WRONG_NETWORK') renderDisconnectedState();
     }
 }
 
 async function useInjectedWalletProvider() {
     const walletProvider = new ethers.providers.Web3Provider(window.ethereum, 'any');
-    const network = await walletProvider.getNetwork();
-    if (network.chainId !== 1) {
-        readProvider = null;
-        providerInfo = null;
-        providerMode = '';
-        connectedAddress = '';
-        renderDisconnectedState('Switch your wallet to Ethereum mainnet, then connect again.');
-        throw new Error('Wallet is not on Ethereum mainnet.');
-    }
-
     const signer = walletProvider.getSigner();
     connectedAddress = await signer.getAddress().catch(() => '');
     if (connectedAddress) window.CultWalletSession?.connect(connectedAddress);
+
+    const onMainnet = window.CultEthereumNetwork?.requireMainnet
+        ? await window.CultEthereumNetwork.requireMainnet({ connected: true })
+        : Number((await walletProvider.getNetwork()).chainId) === 1;
+    if (!onMainnet) {
+        readProvider = null;
+        providerInfo = null;
+        providerMode = 'wrong-network';
+        renderDisconnectedState('Switch to Ethereum to use your wallet RPC. Public RPC remains available from the menu.');
+        const error = new Error('Wallet is not on Ethereum mainnet.');
+        error.code = 'WRONG_NETWORK';
+        throw error;
+    }
+
     readProvider = walletProvider;
     providerInfo = { label: 'Wallet RPC' };
     providerMode = 'wallet';
@@ -634,7 +641,8 @@ function renderDisconnectedState(message = 'Connect a wallet to scan with your w
 }
 
 function setupWalletListeners() {
-    if (!window.ethereum?.on) return;
+    if (walletListenersAttached || !window.ethereum?.on) return;
+    walletListenersAttached = true;
     window.ethereum.on('accountsChanged', () => {
         readProvider = null;
         providerInfo = null;
@@ -8545,9 +8553,12 @@ function setBusy(isBusy) {
 }
 
 function updateConnectButton() {
-    if (providerMode === 'wallet' && connectedAddress) {
-        el.connectWalletBtn.textContent = shortAddress(connectedAddress);
-        el.connectWalletBtn.title = 'Connected wallet provider';
+    if (connectedAddress && ['wallet', 'wrong-network'].includes(providerMode)) {
+        const title = providerMode === 'wallet' ? 'Connected wallet provider' : 'Connected wallet · switch to Ethereum';
+        if (!window.CultWalletButton?.renderConnected?.(el.connectWalletBtn, connectedAddress, title)) {
+            el.connectWalletBtn.textContent = shortAddress(connectedAddress);
+            el.connectWalletBtn.title = title;
+        }
         el.etherscanLink.href = addressUrl(connectedAddress);
         return;
     }

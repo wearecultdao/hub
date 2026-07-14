@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="../shared/site-nav.css?v=16">
     <link rel="stylesheet" href="../shared/entry.css?v=45">
     <link rel="stylesheet" href="../shared/address-identity.css?v=20">
+    <link rel="stylesheet" href="../shared/ethereum-network.css?v=2">
 </head>
 <body>
     <canvas id="matrix-fire-background" class="matrix-fire-background" aria-hidden="true"></canvas>
@@ -68,6 +69,7 @@
                 <div class="wallet-widget" data-wallet-owner="shared">
                     <button id="connect-wallet-btn" type="button">Connect Wallet</button>
                     <div class="wallet-dropdown" aria-label="Wallet menu">
+                        <a class="dropdown-item" href="https://app.uniswap.org/#/swap?outputCurrency=0xf0f9d895aca5c8678f706fb8216fa22957685a13" target="_blank" rel="noopener noreferrer">Buy on Uniswap</a>
                         <button class="dropdown-item" type="button" data-shared-wallet-copy>Copy Address</button>
                         <a class="dropdown-item" href="#" target="_blank" rel="noopener noreferrer" data-shared-wallet-explorer>View on Etherscan</a>
                         <button class="dropdown-item" type="button" data-shared-wallet-disconnect>Disconnect</button>
@@ -148,6 +150,7 @@
     </div>
 
     <script src="matrix-fire-background.js"></script>
+    <script src="../shared/ethereum-network.js?v=2"></script>
     <script src="app.js?v=5"></script>
     <script src="../shared/delegation-status.js?v=2"></script>
     <script src="../shared/governance-live-state.js?v=4"></script>
@@ -157,7 +160,7 @@
     <script src="../shared/connected-delegation-probe.js?v=4"></script>
     <script src="../shared/section-summary-cache.js?v=4"></script>
     <script src="../shared/section-launcher.js?v=11"></script>
-    <script src="../shared/entry-metrics.js?v=19"></script>
+    <script src="../shared/entry-metrics.js?v=20"></script>
     <script src="../shared/address-identity.js?v=4"></script>
     <script src="../shared/address-identity-ui.js?v=23"></script>
 </body>

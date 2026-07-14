@@ -1,0 +1,80 @@
+.ethereum-network-notice {
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0 0 16px;
+  padding: 10px 12px;
+}
+
+.hub-notice-stack > .ethereum-network-notice {
+  margin: 0;
+}
+
+.ethereum-network-notice[hidden] {
+  display: none !important;
+}
+
+.ethereum-network-notice-copy {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  min-width: 0;
+}
+
+.ethereum-network-notice-copy strong {
+  color: inherit;
+}
+
+.ethereum-network-notice-copy span {
+  line-height: inherit;
+  opacity: 0.9;
+}
+
+.ethereum-network-notice button {
+  flex: 0 0 auto;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+  cursor: pointer;
+}
+
+.ethereum-network-notice button:hover,
+.ethereum-network-notice button:focus-visible {
+  opacity: 0.76;
+}
+
+.ethereum-network-notice button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+html[data-ethereum-network="wrong"] .wallet-widget #connect-wallet-btn,
+html[data-ethereum-network="switching"] .wallet-widget #connect-wallet-btn,
+html[data-ethereum-network="error"] .wallet-widget #connect-wallet-btn {
+  border-color: var(--color-orange, #ff9800) !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-orange, #ff9800) 42%, transparent);
+}
+
+[data-requires-ethereum][data-ethereum-guard-blocked="true"] {
+  cursor: not-allowed !important;
+  opacity: 0.52 !important;
+}
+
+@media (max-width: 640px) {
+  .ethereum-network-notice {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ethereum-network-notice button {
+    align-self: flex-start;
+    width: auto;
+  }
+}

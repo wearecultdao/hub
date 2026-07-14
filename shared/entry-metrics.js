@@ -308,10 +308,17 @@
     setSecondaryLine('entry-proposals-deadline', text);
   };
   const applyProposalDefaultState = (activeCount) => {
+    const requestedDetailsId = window.location.hash.replace(/^#/, '');
+    const deepLinkedDetailsId = proposalDetailIds.includes(requestedDetailsId) ? requestedDetailsId : '';
     proposalDetailIds.forEach((id) => {
       const details = document.getElementById(id);
-      if (details) details.open = id === 'details-active-proposals' && activeCount > 0;
+      if (details) details.open = deepLinkedDetailsId
+        ? id === deepLinkedDetailsId
+        : id === 'details-active-proposals' && activeCount > 0;
     });
+    if (deepLinkedDetailsId) {
+      window.requestAnimationFrame(() => document.getElementById(deepLinkedDetailsId)?.scrollIntoView({ block: 'start' }));
+    }
   };
 
   const renderProposals = () => {

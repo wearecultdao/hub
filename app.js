@@ -6,6 +6,7 @@
 // ============================================================
 
 import DOMPurify from 'https://cdn.jsdelivr.net/npm/dompurify@3.0.5/+esm';
+import { hydrateProposalGovernanceCards } from './shared/proposal-governance-insights.js';
 
 // === Imports ===
 import {
@@ -62,6 +63,8 @@ let openProposalsState = new Set();
 let batchApiAvailable = null;
 let batchApiUnavailableReason = '';
 let batchApiHealthCheckPromise = null;
+let walletRefreshSequence = 0;
+let walletProviderListenersAttached = false;
 
 // --- DOM Elements ---
 const connectBtn = document.getElementById('connect-wallet-btn');
@@ -370,7 +373,58 @@ async function renderTrackedWallets() {
 }
 
 // --- Core Application Logic ---
-async function connectWallet() { if (typeof window.ethereum === 'undefined') return alert('Please install MetaMask.'); try { provider = new ethers.providers.Web3Provider(window.ethereum); await provider.send("eth_requestAccounts", []); signer = provider.getSigner(); userAddress = await signer.getAddress(); window.CultWalletSession?.connect(userAddress); onChainDataCache = null; connectBtn.textContent = `${userAddress.substring(0, 6)}...`; connectBtn.disabled = false; dappContent.style.display = 'block'; document.getElementById('etherscan-link').href = `https://etherscan.io/address/${userAddress}`; document.getElementById('p-proposerWallet').innerHTML = createAddressLink(userAddress); await initializeApp(); } catch (error) { console.error("Failed to connect wallet:", error); } }
+async function connectWallet({ requestAccounts = true } = {}) {
+    if (typeof window.ethereum === 'undefined') return alert('Please install MetaMask or another Ethereum wallet.');
+    setupWalletProviderListeners();
+    const refreshSequence = ++walletRefreshSequence;
+    try {
+        const walletProvider = new ethers.providers.Web3Provider(window.ethereum, 'any');
+        const accounts = await walletProvider.send(requestAccounts ? 'eth_requestAccounts' : 'eth_accounts', []);
+        if (!Array.isArray(accounts) || !accounts.length) {
+            window.CultWalletSession?.disconnect();
+            return;
+        }
+
+        const walletSigner = walletProvider.getSigner();
+        const address = await walletSigner.getAddress();
+        if (refreshSequence !== walletRefreshSequence) return;
+
+        provider = walletProvider;
+        signer = walletSigner;
+        userAddress = address;
+        window.CultWalletSession?.connect(userAddress);
+        onChainDataCache = null;
+        connectBtn.textContent = `${userAddress.substring(0, 6)}...`;
+        connectBtn.disabled = false;
+        dappContent.style.display = 'block';
+        document.getElementById('etherscan-link').href = `https://etherscan.io/address/${userAddress}`;
+        document.getElementById('p-proposerWallet').innerHTML = createAddressLink(userAddress);
+
+        if (!(await requireEthereumMainnet())) return;
+        if (refreshSequence !== walletRefreshSequence) return;
+        await initializeApp();
+    } catch (error) {
+        console.error('Failed to connect wallet:', error);
+    }
+}
+
+function setupWalletProviderListeners() {
+    if (walletProviderListenersAttached || !window.ethereum?.on) return;
+    walletProviderListenersAttached = true;
+    window.ethereum.on('accountsChanged', (accounts) => {
+        if (!Array.isArray(accounts) || !accounts.length) {
+            window.CultWalletSession?.disconnect();
+            location.reload();
+            return;
+        }
+        if (window.CultWalletSession?.read().connected) connectWallet({ requestAccounts: false });
+    });
+    window.ethereum.on('chainChanged', () => {
+        onChainDataCache = null;
+        if (window.CultWalletSession?.read().connected) connectWallet({ requestAccounts: false });
+    });
+}
+
 function disconnectWallet() { window.CultWalletSession?.disconnect(); location.reload(); }
 function copyUserAddressToClipboard() { if (userAddress) { copyTextToClipboard(userAddress); walletDropdown.classList.remove('show'); } }
 
@@ -902,29 +956,29 @@ function getProposalActionsHtml(proposal) {
     if (proposal.state === PROPOSAL_STATES.ACTIVE) {
         if (canVote) {
              buttonsHtml += `
-                <button class="btn2 vote-for-btn">Approve</button>
-                <button class="btn2 vote-against-btn">Reject</button>
+                <button class="btn2 vote-for-btn" data-requires-ethereum>Approve</button>
+                <button class="btn2 vote-against-btn" data-requires-ethereum>Reject</button>
             `;
             if (batchApiReady) {
                  buttonsHtml += `
-                    <button class="btn2 vote-for-sig-btn" style="border-style:dashed;">Approve (Sig)</button>
-                    <button class="btn2 vote-against-sig-btn" style="border-style:dashed;">Reject (Sig)</button>
+                    <button class="btn2 vote-for-sig-btn" style="border-style:dashed;" data-requires-ethereum>Approve (Sig)</button>
+                    <button class="btn2 vote-against-sig-btn" style="border-style:dashed;" data-requires-ethereum>Reject (Sig)</button>
                 `;
             }
         }
         if (batchApiReady) {
-            buttonsHtml += `<button class="btn2 push-votes-btn" style="border-color: var(--color-blue); display: none;">Push <span class="vote-counter">0</span> Votes</button>`;
+            buttonsHtml += `<button class="btn2 push-votes-btn" style="border-color: var(--color-blue); display: none;" data-requires-ethereum>Push <span class="vote-counter">0</span> Votes</button>`;
         } else {
             buttonsHtml += getBatchApiNoticeHtml();
         }
     }
 
     if ((proposal.state === PROPOSAL_STATES.PENDING || proposal.state === PROPOSAL_STATES.ACTIVE) && isUserGuardian && proposal.proposer.toLowerCase() === userAddress.toLowerCase()) {
-        buttonsHtml += `<button class="btn2 cancel-btn">Cancel</button>`;
+        buttonsHtml += `<button class="btn2 cancel-btn" data-requires-ethereum>Cancel</button>`;
     } else if (proposal.state === PROPOSAL_STATES.SUCCEEDED) {
-        buttonsHtml += `<button class="btn2 queue-btn">Queue</button>`;
+        buttonsHtml += `<button class="btn2 queue-btn" data-requires-ethereum>Queue</button>`;
     } else if (proposal.state === PROPOSAL_STATES.QUEUED) {
-        buttonsHtml += `<button class="btn2 execute-btn">Execute</button>`;
+        buttonsHtml += `<button class="btn2 execute-btn" data-requires-ethereum>Execute</button>`;
     }
 
     return `<div class="button-group" style="margin-top:20px;padding-top:20px;">${buttonsHtml}</div>`;
@@ -979,6 +1033,7 @@ function renderProposals(proposals, targetElement, { isActiveList = false, searc
         const onChainTechnicalDetails = (proposal.actions && proposal.actions.targets.length > 0) ? proposal.actions.targets.map((target, i) => { const value = ethers.utils.formatEther(proposal.actions.values[i] || '0'); return `<div class="action-item"><p><strong>Target:</strong> ${createAddressLink(target)}</p><p><strong>Value:</strong> ${value} ETH</p><p><strong>Signature:</strong> ${proposal.actions.signatures[i] || 'N/A'}</p><p><strong>Calldata:</strong> ${proposal.actions.calldatas[i]}</p></div>` }).join('') : `<h4>No Actions (Text-only Proposal)</h4>`;
         const propDiv = proposalEl.querySelector('.proposal');
         propDiv.dataset.proposalId = proposal.id;
+        propDiv.classList.toggle('has-governance-insights', !isActiveList);
         propDiv.querySelector('.proposal-name-title').innerHTML = highlight(proposalTitle, searchTerm);
         const statusEl = propDiv.querySelector('.proposal-status');
         statusEl.textContent = stateStr;
@@ -1005,7 +1060,21 @@ function renderProposals(proposals, targetElement, { isActiveList = false, searc
         propDiv.querySelector('.prop-description-container').innerHTML = DOMPurify.sanitize(descriptionHtml, DOMPURIFY_CONFIG);
         propDiv.querySelector('.prop-technical-data').innerHTML = DOMPurify.sanitize(onChainTechnicalDetails + technicalDetailsHtml, DOMPURIFY_CONFIG);
 
+        const coreDisclosure = propDiv.querySelector('.proposal-core-disclosure');
+        const coreDetails = propDiv.querySelector('.proposal-details');
+        if (coreDisclosure && coreDetails) {
+            coreDisclosure.addEventListener('toggle', () => {
+                coreDetails.style.display = coreDisclosure.open ? 'block' : 'none';
+                if (coreDisclosure.open) openProposalsState.add(String(proposal.id));
+                else openProposalsState.delete(String(proposal.id));
+            });
+        }
+
         if (isActiveList) {
+            propDiv.querySelector('.proposal-card-sections').hidden = false;
+            propDiv.querySelector('.proposal-governance-donuts').hidden = true;
+            propDiv.querySelector('.proposal-governance-metrics-disclosure').hidden = true;
+            propDiv.querySelector('.proposal-governance-evidence-disclosure').hidden = true;
             if (proposal.state === PROPOSAL_STATES.ACTIVE) {
                 propDiv.querySelector('.proposal-timer-container').style.display = 'flex';
                 propDiv.querySelector('.proposal-timer').id = `timer-${proposal.id}`;
@@ -1023,17 +1092,30 @@ function renderProposals(proposals, targetElement, { isActiveList = false, searc
             const detailsEl = proposalEl.querySelector('.proposal-details');
             if (detailsEl) {
                 detailsEl.style.display = 'block';
-                const button = proposalEl.querySelector('.view-details-btn');
-                if (button) button.innerHTML = 'Hide Details ▲';
+                const disclosure = proposalEl.querySelector('.proposal-core-disclosure');
+                if (disclosure) disclosure.open = true;
             }
         }
     });
 
+    if (!isActiveList) hydrateProposalGovernanceCards(targetElement);
     if (!isBatchApiAvailable()) showVisibleBatchApiNotices();
 }
 
 // --- Transaction & Signature Functions ---
+async function requireEthereumMainnet() {
+    if (window.CultEthereumNetwork?.requireMainnet) {
+        return window.CultEthereumNetwork.requireMainnet({ connected: true });
+    }
+    try {
+        return Number((await provider.getNetwork()).chainId) === 1;
+    } catch {
+        return false;
+    }
+}
+
 async function sendTransaction(contract, methodName, args) {
+    if (!(await requireEthereumMainnet())) return null;
     try {
         const tx = await contract[methodName](...args);
         showCustomAlert(`Transaction sent... <a href="https://etherscan.io/tx/${tx.hash}" target="_blank">View on Etherscan</a>`);
@@ -1048,6 +1130,7 @@ async function sendTransaction(contract, methodName, args) {
     }
 }
 async function delegateToSelf() { 
+    if (!(await requireEthereumMainnet())) return;
     openProposalsState = new Set([...document.querySelectorAll('.proposal .proposal-details[style*="block"]')].map(d => d.closest('.proposal').dataset.proposalId));
     const tx = await sendTransaction(new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, signer), 'delegate', [userAddress]);
     if (tx) { 
@@ -1057,6 +1140,7 @@ async function delegateToSelf() {
     } 
 }
 async function stake() {
+    if (!(await requireEthereumMainnet())) return;
     openProposalsState = new Set([...document.querySelectorAll('.proposal .proposal-details[style*="block"]')].map(d => d.closest('.proposal').dataset.proposalId));
     const amountInput = document.getElementById('stake-amount');
     const amount = amountInput.value;
@@ -1080,6 +1164,7 @@ async function stake() {
     }
 }
 async function unstake() {
+    if (!(await requireEthereumMainnet())) return;
     openProposalsState = new Set([...document.querySelectorAll('.proposal .proposal-details[style*="block"]')].map(d => d.closest('.proposal').dataset.proposalId));
     const amountInput = document.getElementById('unstake-amount');
     const amount = amountInput.value;
@@ -1093,6 +1178,7 @@ async function unstake() {
     }
 }
 async function castVote(proposalId, support) { 
+    if (!(await requireEthereumMainnet())) return;
     openProposalsState = new Set([...document.querySelectorAll('.proposal .proposal-details[style*="block"]')].map(d => d.closest('.proposal').dataset.proposalId));
     const tx = await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, signer), 'castVote', [proposalId, support]);
     if (tx) {
@@ -1104,6 +1190,7 @@ async function castVote(proposalId, support) {
 
 async function signVote(proposalId, support) {
     try {
+        if (!(await requireEthereumMainnet())) return;
         if (!(await ensureBatchApiAvailable())) return;
 
         if ((await new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, provider).getVotes(userAddress)).isZero()) {
@@ -1174,6 +1261,7 @@ async function signVote(proposalId, support) {
 
 async function pushAllVotesForProposal(proposalId) {
     try {
+        if (!(await requireEthereumMainnet())) return;
         if (!(await ensureBatchApiAvailable())) return;
 
         const response = await fetch(`${API_BASE_URL}proposal/signatures/${proposalId}`);
@@ -1248,6 +1336,7 @@ async function updateVoteCounterForProposal(proposalId) {
     }
 }
 async function submitProposal() {
+    if (!(await requireEthereumMainnet())) return;
     openProposalsState = new Set([...document.querySelectorAll('.proposal .proposal-details[style*="block"]')].map(d => d.closest('.proposal').dataset.proposalId));
     const investeeWallet = document.getElementById('p-investeeWallet').value.trim();
     if (!ethers.utils.isAddress(investeeWallet)) return showCustomAlert('A valid Investee Wallet address is mandatory.');
@@ -1264,6 +1353,7 @@ async function submitProposal() {
     }
 }
 async function cancelProposal(proposalId) { 
+    if (!(await requireEthereumMainnet())) return;
     if (window.confirm(`Cancel proposal #${proposalId}?`)) {
         openProposalsState = new Set([...document.querySelectorAll('.proposal .proposal-details[style*="block"]')].map(d => d.closest('.proposal').dataset.proposalId));
         const tx = await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, signer), 'cancel', [proposalId]);
@@ -1275,6 +1365,7 @@ async function cancelProposal(proposalId) {
     }
 }
 async function queueProposal(proposalId) { 
+    if (!(await requireEthereumMainnet())) return;
     if (window.confirm(`Queue proposal #${proposalId}?`)) {
         openProposalsState = new Set([...document.querySelectorAll('.proposal .proposal-details[style*="block"]')].map(d => d.closest('.proposal').dataset.proposalId));
         const tx = await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, signer), 'queue', [proposalId]);
@@ -1286,6 +1377,7 @@ async function queueProposal(proposalId) {
     }
 }
 async function executeProposal(proposalId) { 
+    if (!(await requireEthereumMainnet())) return;
     if (window.confirm(`Execute proposal #${proposalId}?`)) {
         openProposalsState = new Set([...document.querySelectorAll('.proposal .proposal-details[style*="block"]')].map(d => d.closest('.proposal').dataset.proposalId));
         const tx = await sendTransaction(new ethers.Contract(GOVERNOR_BRAVO_ADDRESS, GOVERNOR_BRAVO_ABI, signer), 'execute', [proposalId]);
@@ -1297,6 +1389,7 @@ async function executeProposal(proposalId) {
     }
 }
 async function claimRewards() { 
+    if (!(await requireEthereumMainnet())) return;
     const tx = await sendTransaction(new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, signer), 'claimCULT', [0]);
     if (tx) {
         await tx.wait();
@@ -1307,6 +1400,7 @@ async function claimRewards() {
 
 async function signDelegation() {
     try {
+        if (!(await requireEthereumMainnet())) return;
         if (!(await ensureBatchApiAvailable())) return;
 
         const dCultContract = new ethers.Contract(DCULT_TOKEN_ADDRESS, DCULT_ABI, signer);
@@ -1351,6 +1445,7 @@ async function signDelegation() {
 }
 async function pushAllDelegations() {
     try {
+        if (!(await requireEthereumMainnet())) return;
         if (!(await ensureBatchApiAvailable())) return;
 
         const response = await fetch(`${API_BASE_URL}delegate/signatures`);
@@ -1393,6 +1488,7 @@ function safeAddEventListener(id, event, handler) {
 
 window.addEventListener('DOMContentLoaded', () => {
     fetchAndDisplayRepoUpdate();
+    setupWalletProviderListeners();
     
     for (const [code, label] of Object.entries(SUPPORTED_CURRENCIES)) {
         const item = document.createElement('button');
@@ -1484,7 +1580,7 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    if (window.CultWalletSession?.read().connected) connectWallet();
+    if (window.CultWalletSession?.read().connected) connectWallet({ requestAccounts: false });
 
     safeAddEventListener('stake-btn', 'click', stake);
     safeAddEventListener('unstake-btn', 'click', unstake);

@@ -199,6 +199,31 @@ h3 {
     gap: 0;
 }
 
+.analytics-proposal-guide {
+    margin: 14px 0 0;
+    color: var(--color-muted);
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.analytics-proposal-guide a {
+    color: rgba(255, 255, 255, 0.82);
+    text-decoration-color: rgba(255, 255, 255, 0.28);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.18em;
+    transition: color 0.16s ease, text-decoration-color 0.16s ease;
+}
+
+.analytics-proposal-guide a:hover,
+.analytics-proposal-guide a:focus-visible {
+    color: var(--color-text);
+    text-decoration-color: currentColor;
+}
+
+.analytics-proposal-guide + .ui-section {
+    margin-top: 18px;
+}
+
 .tool-details-content > .ui-section:first-child {
     margin-top: 30px;
 }

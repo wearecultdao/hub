@@ -23,7 +23,8 @@ The six task-focused entries are:
 
 ## 🛡️ Safety & Data
 
-- Before using the transaction tools, switch your wallet to **Ethereum mainnet**.
+- The Hub detects the connected wallet network and offers a one-click switch to **Ethereum mainnet** when another network is active.
+- Transaction and signature actions remain unavailable until Ethereum mainnet is active.
 - Always verify the contract, method, amount, and network in your wallet before confirming.
 - Wallet collections, labels, descriptions, preferences, caches, and update backups remain in your browser unless you explicitly export them.
 - Historical dataset replacements are opt-in and backup-first when local data already exists.
